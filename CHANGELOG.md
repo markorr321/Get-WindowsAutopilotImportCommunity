@@ -5,6 +5,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [1.0.0] - 2026-07-26
 
+Published to the PowerShell Gallery as
+[Get-WindowsAutopilotImportGUICommunity](https://www.powershellgallery.com/packages/Get-WindowsAutopilotImportGUICommunity).
+Verified after publishing: the downloaded package is byte-identical to `dist\`, and the engine
+it extracts still reports a Valid Authenticode signature.
+
 First release. A ground-up rewrite of [ugurkocde/AutoPilot_Import_GUI](https://github.com/ugurkocde/AutoPilot_Import_GUI) built around
 [Andrew S Taylor's Windows Autopilot Community script](https://github.com/andrew-s-taylor/WindowsAutopilotInfo) instead of Michael Niehaus'
 original, which is what makes Autopilot v2 possible.

@@ -186,6 +186,42 @@ if (-not $ApiKey) {
 
 if (-not $PSCmdlet.ShouldProcess("$($info.Name) $($info.Version) -> $Repository", 'Publish')) { return }
 
+# Publish-Script needs the NuGet *client binary*, which is not the same thing as the NuGet
+# package provider: having the provider installed is not sufficient. When it is missing,
+# PowerShellGet 1.0.0.1 tries to bootstrap it through ShouldContinue, and in a non-interactive
+# host that throws "Exception calling ShouldContinue ... Object reference not set to an
+# instance of an object" from Install-NuGetClientBinaries. Fetching it up front keeps the
+# publish non-interactive and gives a comprehensible error if the download fails.
+Write-Step 'Checking for the NuGet client binary'
+$nugetDir = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\PowerShell\PowerShellGet'
+$nugetExe = Join-Path $nugetDir 'NuGet.exe'
+$programDataNuget = Join-Path $env:ProgramData 'Microsoft\Windows\PowerShell\PowerShellGet\NuGet.exe'
+
+if ((Test-Path -LiteralPath $nugetExe) -or (Test-Path -LiteralPath $programDataNuget)) {
+    Write-Ok 'NuGet.exe present.'
+}
+else {
+    Write-Ok 'NuGet.exe missing; downloading from dist.nuget.org...'
+    try {
+        if (-not (Test-Path -LiteralPath $nugetDir)) {
+            New-Item -ItemType Directory -Path $nugetDir -Force | Out-Null
+        }
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Invoke-WebRequest -Uri 'https://dist.nuget.org/win-x86-commandline/latest/nuget.exe' `
+                          -OutFile $nugetExe -UseBasicParsing -ErrorAction Stop
+
+        $nugetSig = Get-AuthenticodeSignature -LiteralPath $nugetExe
+        if ($nugetSig.Status -ne 'Valid') {
+            Remove-Item -LiteralPath $nugetExe -Force -ErrorAction SilentlyContinue
+            throw "The downloaded NuGet.exe is not validly signed (status: $($nugetSig.Status)). Refusing to use it."
+        }
+        Write-Ok "NuGet.exe downloaded and signature verified ($($nugetSig.SignerCertificate.Subject -replace '^(CN=[^,]+).*', '$1'))."
+    }
+    catch {
+        throw "Could not obtain NuGet.exe, which Publish-Script requires: $($_.Exception.Message)"
+    }
+}
+
 Write-Step "Publishing $($info.Name) $($info.Version) to $Repository"
 Publish-Script -Path $Path -NuGetApiKey $ApiKey -Repository $Repository -ErrorAction Stop
 
