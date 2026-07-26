@@ -1,0 +1,196 @@
+# Autopilot Import GUI (Community)
+
+**by [Mark Orr](https://github.com/markorr321) · [orr365.tools](https://orr365.tools)**
+
+A graphical front end for [Andrew S Taylor's Windows Autopilot Community script](https://github.com/andrew-s-taylor/WindowsAutopilotInfo), supporting **both Autopilot v1 (hardware hash) and Autopilot v2 (Device Preparation identifiers)**.
+
+It is a ground-up rewrite of [ugurkocde/AutoPilot_Import_GUI](https://github.com/ugurkocde/AutoPilot_Import_GUI), which wrapped Michael Niehaus' original `Get-WindowsAutoPilotInfo` and therefore supported v1 only.
+
+![Register page](assets/01-register-v1.png)
+
+---
+
+## Why a rewrite
+
+| | Original GUI | This tool |
+|---|---|---|
+| Engine | `Get-WindowsAutoPilotInfo` (v1 only) | `get-windowsautopilotinfocommunity.ps1` v5.0.16 (**v1 + v2**) |
+| Window | Fixed 399×636, absolute pixel positioning | Resizable, `Grid`-based, sidebar navigation |
+| Feedback | Spawns separate console windows | Output streamed into the window with **staged progress** and a **cancel** button |
+| Network check | Present but **never worked** — every probe called `Write-Output -ForegroundColor`, which is not a valid parameter, so all 29 checks threw and the errors were swallowed by `SilentlyContinue` | Rewritten: 26 endpoints probed concurrently in ~0.4 s, colour-coded results grid, latency, required vs optional |
+| Group tag | Free-text box, retyped every time | Editable dropdown with remembered history |
+| Already-registered device | Not handled — the engine's `Read-Host` prompt would hang behind the console | Explicit choice: update tag / delete and re-add / assume new |
+| Also supports | — | Assigned user, computer name, Entra group membership, batch CSV import, offline export, wipe, sysprep, pre-provisioning, product key change, Autopilot diagnostics |
+| Logging | `C:\Autopilot_Import_GUI_log.txt` | `%ProgramData%\AutopilotImportGUI\Logs\` with an in-app Logs page |
+| Windows Update | Downloads the `PSWindowsUpdate` module from PSGallery | Uses the in-box Windows Update agent, so it works on a restricted OOBE network |
+
+---
+
+## Autopilot v1 vs v2
+
+The mode toggle is not cosmetic — the two paths are mutually exclusive in the engine.
+
+**Autopilot v1** uploads the 4K hardware hash to `windowsAutopilotDeviceIdentities`. Group tag, assigned user, computer name, Entra group and profile-assignment waiting all apply. Requires administrator rights, and many virtual machines cannot produce a hash at all.
+
+**Autopilot v2 (Device Preparation)** imports a `Manufacturer,Model,Serial` identifier to `importedDeviceIdentities`. No hardware hash is needed, so it works on VMs. Devices are targeted by the **Entra security group on your Device Preparation policy**, not by a group tag — so group tag, assigned user, assignment waiting and reboot do not apply. The group tag field is **hidden** in this mode and the rest are disabled, rather than pretending otherwise.
+
+![Device Preparation mode](assets/02-register-v2.png)
+
+If this machine cannot produce a hardware hash, the tool defaults to v2 and says why.
+
+---
+
+## Requirements
+
+- Windows 10/11, **Windows PowerShell 5.1** (not PowerShell 7 — the engine pins `Microsoft.Graph.Authentication` to ≤ 2.9.1)
+- Administrator rights (the hardware hash lives in a CIM class that standard users cannot read)
+- An account that can register Autopilot devices in your tenant
+
+The engine requests these delegated Graph scopes on first sign-in:
+
+```
+Device.ReadWrite.All
+DeviceManagementManagedDevices.ReadWrite.All
+DeviceManagementServiceConfig.ReadWrite.All
+DeviceManagementScripts.ReadWrite.All
+Group.ReadWrite.All            (only when adding to an Entra group)
+GroupMember.ReadWrite.All      (only when adding to an Entra group)
+```
+
+Does not work in **WinPE** (no WPF). It does work in full Windows **OOBE** via <kbd>Shift</kbd>+<kbd>F10</kbd>.
+
+---
+
+## Quick start
+
+Everything is embedded in one file — the window, the theme, and the engine itself. Copy `dist\Get-WindowsAutopilotImportGUICommunity.ps1` to a USB stick and run it:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File .\Get-WindowsAutopilotImportGUICommunity.ps1
+```
+
+In OOBE, press <kbd>Shift</kbd>+<kbd>F10</kbd>, then:
+
+```cmd
+powershell -ExecutionPolicy Bypass -File D:\Get-WindowsAutopilotImportGUICommunity.ps1
+```
+
+Optional parameters:
+
+```powershell
+# Pre-fill the group tag and start in v1 mode
+.\Get-WindowsAutopilotImportGUICommunity.ps1 -GroupTag FINANCE -Mode v1
+
+# Device preparation, pre-filled assigned user
+.\Get-WindowsAutopilotImportGUICommunity.ps1 -Mode v2 -AssignedUser user@contoso.com
+
+# Skip the elevation prompt (hash will be unavailable)
+.\Get-WindowsAutopilotImportGUICommunity.ps1 -NoElevate
+```
+
+The tool elevates itself once at launch, so child engine runs inherit the token and the technician sees a single UAC prompt per session.
+
+---
+
+## What each page does
+
+### Register
+Mode toggle, group tag (with history, hidden in Device Preparation mode), assigned user, computer name, Entra group, and the options that matter. **Preview command** renders the exact engine invocation without running anything — useful for verifying behaviour and for lifting into your own automation.
+
+Destructive combinations (delete-and-re-add, wipe, sysprep, product key change) require explicit confirmation showing the command that will run.
+
+### Device
+Full inventory, plus offline export that never touches your tenant: hardware hash CSV (v1), device identifier CSV (v2), partner CSV format, and clipboard copies.
+
+![Device page](assets/03-device.png)
+
+### Batch import
+Point at a CSV collected elsewhere and import many devices at once. v1 expects `Device Serial Number, Windows Product ID, Hardware Hash`; v2 expects `Manufacturer, Model, Serial` with no header row.
+
+### Network check
+Probes the documented Autopilot, Intune, Entra, TPM attestation, activation and update endpoints on TCP 443, concurrently. Failures sort to the top; required failures are red, optional ones amber.
+
+![Network check](assets/05-network.png)
+
+### Advanced
+Post-assignment actions (pre-provisioning, sysprep, wipe, product key), Autopilot diagnostics, Windows Update, engine integrity verification, and a toggle to show the engine console.
+
+![Advanced page](assets/06-advanced.png)
+
+### Logs
+The whole session, including full engine output, with the log file path and a copy button.
+
+---
+
+## Configuration
+
+`config.json` is read from next to the script first, then `%ProgramData%\AutopilotImportGUI\`. Ship a preconfigured one on your USB stick to pre-populate site group tags:
+
+```json
+{
+  "groupTagHistory": ["FINANCE", "KIOSK-EU", "LAB-VDI"],
+  "lastMode": "v1",
+  "waitForAssignment": true,
+  "rebootWhenAssigned": true,
+  "existingDevicePolicy": "update",
+  "showConsoleWindow": false,
+  "connectivityEndpoints": null
+}
+```
+
+`existingDevicePolicy` is `update`, `delete` or `skipcheck`. Set `connectivityEndpoints` to an array of `{ Category, Name, Host, Port, Required }` to replace the built-in endpoint list.
+
+---
+
+## Building from source
+
+```powershell
+.\build.ps1                        # runs tests, then emits dist\*.ps1
+.\build.ps1 -SkipTests             # skip the Pester gate
+.\build.ps1 -UpdateVendorManifest  # after refreshing vendor\ from upstream
+```
+
+The build inlines both XAML documents and embeds each vendored script as base64 of its **exact bytes** — never re-encoded text — so Andrew Taylor's Authenticode signature survives. The checksum is round-trip verified at build time and again at runtime.
+
+### Layout
+
+```
+Get-WindowsAutopilotImportGUICommunity.ps1   development entry point (dot-sources src\)
+build.ps1                                    -> dist\ single self-contained script
+src\Views\MainWindow.xaml                    window; @THEME@ token receives the theme
+src\Themes\Dark.xaml                         palette and control templates
+src\Private\ArgumentBuilder.ps1              UI state -> engine parameters (pure, tested)
+src\Private\ProgressParser.ps1               engine output -> progress state (pure, tested)
+src\Private\ScriptRunner.ps1                 child process, live log tail, cancel
+src\Private\Connectivity.ps1                 endpoint list + concurrent probes
+src\Public\Show-AutopilotImportGui.ps1       window construction and wiring
+vendor\                                      pinned community scripts + VERSION.json
+```
+
+### Tests
+
+```powershell
+Invoke-Pester .\tests                                                   # 75 unit tests
+powershell.exe -STA -ExecutionPolicy Bypass -File tests\Test-Distribution.ps1   # 29 build checks
+```
+
+`build.ps1` runs the unit tests and refuses to produce a build if any fail.
+
+The unit tests pin down three engine behaviours that otherwise fail *silently* — see `src\Private\ArgumentBuilder.ps1` for the full reasoning:
+
+1. `-Reboot`, `-Wipe`, `-Sysprep`, `-preprov` and `-ChangePK` are nested inside `if ($Assign)`, so without `-Assign` they never execute. The builder forces `-Assign` on.
+2. An already-registered serial with neither `-delete` nor `-updatetag` hits a `Read-Host` prompt — fatal behind a hidden console. The builder always emits an explicit policy plus `-Force`.
+3. `-identifier` takes a separate code path that ignores group tag, assigned user, computer name, Entra group, assign and reboot.
+
+`Test-Distribution.ps1` additionally proves the embedded engine still reports a **Valid** Authenticode signature after the base64 round-trip.
+
+---
+
+## Credits
+
+- **Author:** Mark Orr — [@markorr321](https://github.com/markorr321) · [orr365.tools](https://orr365.tools)
+- **Engine:** [`get-windowsautopilotinfocommunity.ps1`](https://github.com/andrew-s-taylor/WindowsAutopilotInfo) and `Get-AutopilotDiagnosticsCommunity.ps1` © Andrew S Taylor, MIT. Vendored unmodified; see `vendor\VERSION.json` for the pinned commit and checksums.
+- **Original concept:** [AutoPilot_Import_GUI](https://github.com/ugurkocde/AutoPilot_Import_GUI) © 2023 Ugur Koc, MIT. No code from it is redistributed here.
+- The community script itself derives from Microsoft's `Get-WindowsAutoPilotInfo` by Michael Niehaus.
+
+MIT licensed — see [LICENSE](LICENSE).

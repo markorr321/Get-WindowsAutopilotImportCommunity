@@ -1,0 +1,13 @@
+# Runtime artefacts, not sources.
+# dist\ IS committed on purpose: it is the single-file deliverable technicians copy to a
+# USB stick, and shipping it means they never need to build anything.
+
+# Local preferences written next to the script at runtime.
+config.json
+
+# Session logs, if a run is started from inside the checkout.
+*.log
+Logs/
+
+# Extracted engine copies and generated launchers.
+work/

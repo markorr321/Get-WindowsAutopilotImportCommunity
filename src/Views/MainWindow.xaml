@@ -1,0 +1,603 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Autopilot Import GUI (Community)"
+        Width="1140" Height="800" MinWidth="960" MinHeight="620"
+        WindowStartupLocation="CenterScreen"
+        Background="#161616" Foreground="#FFFFFF"
+        FontFamily="Segoe UI Variable, Segoe UI"
+        UseLayoutRounding="True" SnapsToDevicePixels="True">
+
+  <!--
+    Autopilot Import GUI (Community) main window.
+
+    Replaces the original's fixed 399x636 canvas of absolutely positioned controls with a
+    resizable Grid/DockPanel shell: sidebar navigation on the left, one visible page on the
+    right, a persistent status and progress strip along the bottom.
+
+    Loaded by XamlReader at runtime, so there is deliberately no x:Class and no event
+    handler attributes. Every interactive element carries an x:Name and is wired up in
+    Show-AutopilotImportGui.ps1. The THEME token below is replaced with the contents of
+    Themes/Dark.xaml before parsing, because StaticResource only resolves against
+    resources already present when the tree is built.
+  -->
+
+  <Window.Resources>
+    <!-- @THEME@ -->
+  </Window.Resources>
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <!-- ==================== header ==================== -->
+    <Border Grid.Row="0" Background="#1F1F1F" BorderBrush="#2A2A2A" BorderThickness="0,0,0,1" Padding="20,12">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+          <Ellipse Width="10" Height="10" Fill="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
+          <TextBlock Text="Autopilot Import GUI" FontSize="17" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center"/>
+          <TextBlock Text="Community" FontSize="17" Foreground="{StaticResource TextMuted}" Margin="6,0,0,0" VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+          <Border x:Name="PillAdmin" Style="{StaticResource Pill}" Margin="0,0,8,0">
+            <TextBlock x:Name="PillAdminText" Style="{StaticResource PillText}" Text="Checking rights"/>
+          </Border>
+          <Border x:Name="PillNetwork" Style="{StaticResource Pill}" Margin="0,0,14,0">
+            <TextBlock x:Name="PillNetworkText" Style="{StaticResource PillText}" Text="Checking network"/>
+          </Border>
+          <TextBlock x:Name="HeaderClock" Foreground="{StaticResource TextMuted}" FontSize="12" VerticalAlignment="Center" Text="--:--:--"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- ==================== body ==================== -->
+    <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="196"/>
+        <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
+
+      <!-- sidebar -->
+      <Border Grid.Column="0" Background="#161616" BorderBrush="#2A2A2A" BorderThickness="0,0,1,0">
+        <DockPanel LastChildFill="True">
+          <!-- Persistent credit, in the same spot the original GUI put its author line. -->
+          <StackPanel DockPanel.Dock="Bottom" Margin="16,0,16,14">
+            <Border Style="{StaticResource Divider}" Margin="0,0,0,10"/>
+            <TextBlock Text="Mark Orr" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondary}"/>
+            <TextBlock Text="@markorr321" Style="{StaticResource HintText}" Margin="0,2,0,0"/>
+            <Button x:Name="SidebarSiteLink" Style="{StaticResource LinkButton}" Content="orr365.tools" Margin="0,5,0,0"/>
+            <Border Style="{StaticResource Divider}" Margin="0,10,0,10"/>
+            <TextBlock x:Name="SidebarEngineVersion" Style="{StaticResource HintText}" Margin="0" Text="Engine: resolving"/>
+            <TextBlock x:Name="SidebarAppVersion" Style="{StaticResource HintText}" Margin="0,4,0,0" Text=""/>
+          </StackPanel>
+
+          <StackPanel DockPanel.Dock="Top" Margin="0,12,0,0">
+            <RadioButton x:Name="NavRegister" Style="{StaticResource NavItem}" GroupName="Nav" Content="Register" IsChecked="True"/>
+            <RadioButton x:Name="NavDevice"   Style="{StaticResource NavItem}" GroupName="Nav" Content="Device"/>
+            <RadioButton x:Name="NavBatch"    Style="{StaticResource NavItem}" GroupName="Nav" Content="Batch import"/>
+            <RadioButton x:Name="NavNetwork"  Style="{StaticResource NavItem}" GroupName="Nav" Content="Network check"/>
+            <RadioButton x:Name="NavAdvanced" Style="{StaticResource NavItem}" GroupName="Nav" Content="Advanced"/>
+            <RadioButton x:Name="NavLogs"     Style="{StaticResource NavItem}" GroupName="Nav" Content="Logs"/>
+          </StackPanel>
+        </DockPanel>
+      </Border>
+
+      <!-- pages -->
+      <Grid Grid.Column="1">
+
+        <!-- ================ Register ================ -->
+        <Grid x:Name="PageRegister" Margin="24,20,24,16">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <!-- The form scrolls; the action buttons and the live output stay pinned so a
+                 tech never has to scroll to find the Register button or the progress. -->
+            <RowDefinition Height="*" MinHeight="120"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+
+          <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Style="{StaticResource PageTitle}" Text="Register this device"/>
+            <TextBlock Style="{StaticResource PageSubtitle}" Text="Signs in to your tenant and registers this machine for Windows Autopilot."/>
+          </StackPanel>
+
+          <!-- form + device summary -->
+          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,6,0">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="336"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" Margin="0,0,16,0">
+
+              <!-- mode -->
+              <Border Style="{StaticResource Card}">
+                <StackPanel>
+                  <TextBlock Style="{StaticResource CardTitle}" Text="Registration mode"/>
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*"/>
+                      <ColumnDefinition Width="10"/>
+                      <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <RadioButton x:Name="ModeV1" Grid.Column="0" Style="{StaticResource Segment}" GroupName="Mode" IsChecked="True">
+                      <StackPanel>
+                        <TextBlock Text="Autopilot v1" FontWeight="SemiBold" FontSize="13" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
+                        <TextBlock Text="Hardware hash" FontSize="11" Opacity="0.75" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
+                      </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="ModeV2" Grid.Column="2" Style="{StaticResource Segment}" GroupName="Mode">
+                      <StackPanel>
+                        <TextBlock Text="Device Preparation" FontWeight="SemiBold" FontSize="13" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
+                        <TextBlock Text="v2 identifier" FontSize="11" Opacity="0.75" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
+                      </StackPanel>
+                    </RadioButton>
+                  </Grid>
+                  <TextBlock x:Name="ModeDescription" Style="{StaticResource HintText}" Margin="2,10,0,0"
+                             Text="Uploads the 4K hardware hash and assigns a deployment profile."/>
+                </StackPanel>
+              </Border>
+
+              <!-- details -->
+              <Border x:Name="CardDetails" Style="{StaticResource Card}">
+                <StackPanel>
+                  <TextBlock Style="{StaticResource CardTitle}" Text="Registration details"/>
+
+                  <!-- Wrapped so the whole field can be hidden in Device Preparation mode,
+                       where the engine ignores the group tag entirely. -->
+                  <StackPanel x:Name="GroupTagSection">
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="GROUP TAG (OPTIONAL)"/>
+                    <ComboBox x:Name="GroupTagCombo" Style="{StaticResource DarkComboBox}" IsEditable="True" MaxDropDownHeight="220"/>
+                    <TextBlock x:Name="GroupTagHint" Style="{StaticResource HintText}" Text="Previously used tags are remembered and offered in the list."/>
+                  </StackPanel>
+
+                  <TextBlock Style="{StaticResource FieldLabel}" Text="ASSIGNED USER UPN (OPTIONAL)" Margin="2,14,0,6"/>
+                  <TextBox x:Name="AssignedUserBox" Height="38"/>
+
+                  <TextBlock Style="{StaticResource FieldLabel}" Text="COMPUTER NAME (OPTIONAL)" Margin="2,14,0,6"/>
+                  <TextBox x:Name="ComputerNameBox" Height="38"/>
+
+                  <TextBlock Style="{StaticResource FieldLabel}" Text="ADD TO ENTRA GROUP (OPTIONAL)" Margin="2,14,0,6"/>
+                  <TextBox x:Name="AddToGroupBox" Height="38"/>
+                  <TextBlock Style="{StaticResource HintText}" Text="Separate multiple group names with commas."/>
+                </StackPanel>
+              </Border>
+
+              <!-- options -->
+              <Border x:Name="CardOptions" Style="{StaticResource Card}">
+                <StackPanel>
+                  <TextBlock Style="{StaticResource CardTitle}" Text="Options"/>
+                  <CheckBox x:Name="WaitAssignCheck" Content="Wait for the deployment profile to be assigned"/>
+                  <CheckBox x:Name="RebootCheck" Content="Restart this device once the profile is assigned"/>
+
+                  <TextBlock Style="{StaticResource FieldLabel}" Text="IF THIS SERIAL IS ALREADY REGISTERED" Margin="2,14,0,6"/>
+                  <RadioButton x:Name="PolicyUpdate" Style="{StaticResource ChoiceRadio}" GroupName="Existing" IsChecked="True" Content="Update its group tag"/>
+                  <RadioButton x:Name="PolicyDelete" Style="{StaticResource ChoiceRadio}" GroupName="Existing" Content="Delete from Autopilot, Intune and Entra ID, then re-add"/>
+                  <RadioButton x:Name="PolicySkip" Style="{StaticResource ChoiceRadio}" GroupName="Existing" Content="Assume it is new (skips the lookup, much faster on large tenants)"/>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+
+            <!-- device summary -->
+            <StackPanel Grid.Column="1">
+              <Border Style="{StaticResource Card}">
+                <StackPanel>
+                  <TextBlock Style="{StaticResource CardTitle}" Text="This device"/>
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="Auto"/>
+                      <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                      <RowDefinition Height="Auto"/>
+                      <RowDefinition Height="Auto"/>
+                      <RowDefinition Height="Auto"/>
+                      <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource InfoLabel}" Text="Serial" Margin="0,0,12,7"/>
+                    <TextBlock x:Name="SummarySerial" Grid.Row="0" Grid.Column="1" Style="{StaticResource InfoValue}" Margin="0,0,0,7" Text="..."/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource InfoLabel}" Text="Model" Margin="0,0,12,7"/>
+                    <TextBlock x:Name="SummaryModel" Grid.Row="1" Grid.Column="1" Style="{StaticResource InfoValue}" Margin="0,0,0,7" Text="..."/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource InfoLabel}" Text="Maker" Margin="0,0,12,7"/>
+                    <TextBlock x:Name="SummaryManufacturer" Grid.Row="2" Grid.Column="1" Style="{StaticResource InfoValue}" Margin="0,0,0,7" Text="..."/>
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource InfoLabel}" Text="Free" Margin="0,0,12,0"/>
+                    <TextBlock x:Name="SummaryFreeSpace" Grid.Row="3" Grid.Column="1" Style="{StaticResource InfoValue}" Text="..."/>
+                  </Grid>
+
+                  <Border Style="{StaticResource Divider}"/>
+
+                  <TextBlock Style="{StaticResource FieldLabel}" Text="READINESS"/>
+                  <WrapPanel>
+                    <Border x:Name="PillHash" Style="{StaticResource Pill}" Margin="0,0,6,6">
+                      <TextBlock x:Name="PillHashText" Style="{StaticResource PillText}" Text="Hash"/>
+                    </Border>
+                    <Border x:Name="PillTpm" Style="{StaticResource Pill}" Margin="0,0,6,6">
+                      <TextBlock x:Name="PillTpmText" Style="{StaticResource PillText}" Text="TPM"/>
+                    </Border>
+                    <Border x:Name="PillSecureBoot" Style="{StaticResource Pill}" Margin="0,0,6,6">
+                      <TextBlock x:Name="PillSecureBootText" Style="{StaticResource PillText}" Text="Secure Boot"/>
+                    </Border>
+                  </WrapPanel>
+
+                  <TextBlock x:Name="IdentifierPreviewLabel" Style="{StaticResource FieldLabel}" Text="DEVICE IDENTIFIER" Margin="2,10,0,6" Visibility="Collapsed"/>
+                  <TextBox x:Name="IdentifierPreviewBox" Style="{StaticResource OutputBox}" Height="46" Visibility="Collapsed" TextWrapping="Wrap"/>
+                </StackPanel>
+              </Border>
+
+              <Border x:Name="NoticeCard" Style="{StaticResource Card}" Visibility="Collapsed"
+                      Background="#1E1A12" BorderBrush="#4A3A16">
+                <StackPanel>
+                  <TextBlock x:Name="NoticeTitle" Style="{StaticResource CardTitle}" Foreground="{StaticResource WarningBrushLight}" Text="Before you continue" Margin="0,0,0,8"/>
+                  <TextBlock x:Name="NoticeText" Foreground="{StaticResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Text=""/>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </Grid>
+          </ScrollViewer>
+
+          <!-- actions -->
+          <Grid Grid.Row="2" Margin="0,12,0,12">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Button x:Name="RegisterButton" Grid.Column="0" Style="{StaticResource PrimaryButton}" Content="REGISTER THIS DEVICE" Margin="0,0,10,0"/>
+            <Button x:Name="PreviewButton" Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Preview command" Height="48" Margin="0,0,10,0"/>
+            <Button x:Name="CancelButton" Grid.Column="2" Style="{StaticResource SecondaryButton}" Content="Cancel" Height="48" IsEnabled="False"/>
+          </Grid>
+
+          <!-- live output -->
+          <Grid Grid.Row="3">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <TextBlock Grid.Row="0" Style="{StaticResource FieldLabel}" Text="LIVE OUTPUT"/>
+            <TextBox x:Name="RegisterOutput" Grid.Row="1" Style="{StaticResource OutputBox}" Height="132"/>
+          </Grid>
+        </Grid>
+
+        <!-- ================ Device ================ -->
+        <Grid x:Name="PageDevice" Margin="24,20,24,16" Visibility="Collapsed">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+          </Grid.RowDefinitions>
+
+          <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Style="{StaticResource PageTitle}" Text="Device"/>
+            <TextBlock Style="{StaticResource PageSubtitle}" Text="Hardware and OS details, plus offline export of the Autopilot identity. Nothing here contacts your tenant."/>
+          </StackPanel>
+
+          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="336"/>
+              </Grid.ColumnDefinitions>
+
+              <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,16,14">
+                <StackPanel>
+                  <TextBlock Style="{StaticResource CardTitle}" Text="Inventory"/>
+                  <DataGrid x:Name="DeviceGrid" MaxHeight="420" BorderThickness="0" HeadersVisibility="None">
+                    <DataGrid.Columns>
+                      <DataGridTextColumn Header="Property" Binding="{Binding Name}" Width="190"/>
+                      <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="*"/>
+                    </DataGrid.Columns>
+                  </DataGrid>
+                </StackPanel>
+              </Border>
+
+              <StackPanel Grid.Column="1">
+                <Border Style="{StaticResource Card}">
+                  <StackPanel>
+                    <TextBlock Style="{StaticResource CardTitle}" Text="Export"/>
+                    <Button x:Name="ExportHashButton" Style="{StaticResource SecondaryButton}" Content="Export hardware hash CSV (v1)" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
+                    <Button x:Name="ExportIdentifierButton" Style="{StaticResource SecondaryButton}" Content="Export device identifier CSV (v2)" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
+                    <Button x:Name="CopyIdentifierButton" Style="{StaticResource SecondaryButton}" Content="Copy identifier to clipboard" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
+                    <Button x:Name="CopyHashButton" Style="{StaticResource SecondaryButton}" Content="Copy hardware hash to clipboard" HorizontalAlignment="Stretch"/>
+                    <CheckBox x:Name="ExportAppendCheck" Content="Append to the file if it already exists" Margin="0,12,0,0"/>
+                    <CheckBox x:Name="ExportPartnerCheck" Content="Use the partner CSV format"/>
+                    <TextBlock Style="{StaticResource HintText}" Text="The partner format adds manufacturer and model columns but has no group tag or assigned user column."/>
+                  </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}">
+                  <StackPanel>
+                    <TextBlock Style="{StaticResource CardTitle}" Text="Refresh"/>
+                    <Button x:Name="RefreshDeviceButton" Style="{StaticResource SecondaryButton}" Content="Re-read device information" HorizontalAlignment="Stretch"/>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+            </Grid>
+          </ScrollViewer>
+        </Grid>
+
+        <!-- ================ Batch ================ -->
+        <Grid x:Name="PageBatch" Margin="24,20,24,16" Visibility="Collapsed">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+          </Grid.RowDefinitions>
+
+          <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Style="{StaticResource PageTitle}" Text="Batch import"/>
+            <TextBlock Style="{StaticResource PageSubtitle}" Text="Import many devices from a CSV that was collected elsewhere. Local hardware is not read in this mode."/>
+          </StackPanel>
+
+          <Border Grid.Row="1" Style="{StaticResource Card}">
+            <StackPanel>
+              <TextBlock Style="{StaticResource CardTitle}" Text="Source file"/>
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="BatchFileBox" Grid.Column="0" Height="38" Margin="0,0,10,0"/>
+                <Button x:Name="BatchBrowseButton" Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Browse" Height="38"/>
+              </Grid>
+              <TextBlock x:Name="BatchFileHint" Style="{StaticResource HintText}"
+                         Text="Autopilot v1 expects the columns: Device Serial Number, Windows Product ID, Hardware Hash. Device Preparation expects: Manufacturer, Model, Serial (no header row)."/>
+
+              <TextBlock Style="{StaticResource FieldLabel}" Text="MODE" Margin="2,16,0,6"/>
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="10"/>
+                  <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <RadioButton x:Name="BatchModeV1" Grid.Column="0" Style="{StaticResource Segment}" GroupName="BatchMode" IsChecked="True" Height="40" Content="Autopilot v1"/>
+                <RadioButton x:Name="BatchModeV2" Grid.Column="2" Style="{StaticResource Segment}" GroupName="BatchMode" Height="40" Content="Device Preparation"/>
+              </Grid>
+
+              <CheckBox x:Name="BatchWaitCheck" Content="Wait for deployment profiles to be assigned" Margin="0,14,0,0"/>
+            </StackPanel>
+          </Border>
+
+          <Grid Grid.Row="2" Margin="0,2,0,12">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Button x:Name="BatchRunButton" Grid.Column="0" Style="{StaticResource PrimaryButton}" Content="IMPORT FROM CSV" Margin="0,0,10,0"/>
+            <Button x:Name="BatchPreviewButton" Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Preview command" Height="48"/>
+          </Grid>
+
+          <Grid Grid.Row="3">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <TextBlock Grid.Row="0" Style="{StaticResource FieldLabel}" Text="LIVE OUTPUT"/>
+            <TextBox x:Name="BatchOutput" Grid.Row="1" Style="{StaticResource OutputBox}" MinHeight="120"/>
+          </Grid>
+        </Grid>
+
+        <!-- ================ Network ================ -->
+        <Grid x:Name="PageNetwork" Margin="24,20,24,16" Visibility="Collapsed">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+          </Grid.RowDefinitions>
+
+          <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Style="{StaticResource PageTitle}" Text="Network check"/>
+            <TextBlock Style="{StaticResource PageSubtitle}" Text="Tests the endpoints Windows Autopilot and Intune need on TCP 443."/>
+          </StackPanel>
+
+          <Grid Grid.Row="1" Margin="0,0,0,14">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Button x:Name="NetworkRunButton" Grid.Column="0" Style="{StaticResource PrimaryButton}" Content="RUN CHECK" Height="40" Margin="0,0,10,0"/>
+            <Button x:Name="NetworkCopyButton" Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Copy results" Height="40" Margin="0,0,16,0"/>
+            <TextBlock x:Name="NetworkSummary" Grid.Column="2" VerticalAlignment="Center" Foreground="{StaticResource TextMuted}" FontSize="12" Text="Not run yet."/>
+          </Grid>
+
+          <DataGrid x:Name="NetworkGrid" Grid.Row="2">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="STATUS" Binding="{Binding Status}" Width="110">
+                <DataGridTextColumn.ElementStyle>
+                  <Style TargetType="TextBlock">
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="VerticalAlignment" Value="Center"/>
+                    <Setter Property="Foreground" Value="#C0C0C0"/>
+                    <Style.Triggers>
+                      <!-- Reachable is green; a failing *required* endpoint is red, while a
+                           failing optional one is amber so it reads as informational. -->
+                      <DataTrigger Binding="{Binding Status}" Value="OK">
+                        <Setter Property="Foreground" Value="#3BC77A"/>
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding Status}" Value="Failed">
+                        <Setter Property="Foreground" Value="#F03A47"/>
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding Status}" Value="Unreachable">
+                        <Setter Property="Foreground" Value="#E9B44C"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </DataGridTextColumn.ElementStyle>
+              </DataGridTextColumn>
+              <DataGridTextColumn Header="ENDPOINT" Binding="{Binding Name}" Width="190"/>
+              <DataGridTextColumn Header="HOST" Binding="{Binding Host}" Width="*"/>
+              <DataGridTextColumn Header="CATEGORY" Binding="{Binding Category}" Width="180"/>
+              <DataGridTextColumn Header="REQUIRED" Binding="{Binding Required}" Width="80"/>
+              <DataGridTextColumn Header="MS" Binding="{Binding LatencyMs}" Width="60"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </Grid>
+
+        <!-- ================ Advanced ================ -->
+        <Grid x:Name="PageAdvanced" Margin="24,20,24,16" Visibility="Collapsed">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+          </Grid.RowDefinitions>
+
+          <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Style="{StaticResource PageTitle}" Text="Advanced"/>
+            <TextBlock Style="{StaticResource PageSubtitle}" Text="Post-registration actions and maintenance tools. These apply to Autopilot v1 registrations only."/>
+          </StackPanel>
+
+          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="336"/>
+              </Grid.ColumnDefinitions>
+
+              <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                <Border Style="{StaticResource Card}">
+                  <StackPanel>
+                    <TextBlock Style="{StaticResource CardTitle}" Text="After the profile is assigned"/>
+                    <TextBlock Style="{StaticResource HintText}" Margin="2,0,0,10"
+                               Text="The community script performs all of these only after it has waited for profile assignment, so selecting any of them turns that wait on automatically."/>
+                    <CheckBox x:Name="AdvPreProvisionCheck" Content="Start pre-provisioning (presses the Windows key five times)"/>
+                    <CheckBox x:Name="AdvSysprepCheck" Content="Run sysprep /oobe /reboot"/>
+                    <CheckBox x:Name="AdvWipeCheck" Content="Send an Intune wipe to this device"/>
+                    <TextBlock x:Name="AdvWipeWarning" Foreground="{StaticResource ErrorBrush}" FontSize="11" TextWrapping="Wrap" Margin="28,2,0,0"
+                               Text="A wipe erases this device. It cannot be undone."/>
+
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="CHANGE PRODUCT KEY (OPTIONAL)" Margin="2,16,0,6"/>
+                    <TextBox x:Name="AdvChangePkBox" Height="38"/>
+                    <TextBlock Style="{StaticResource HintText}" Text="Runs changepk.exe to upgrade the Windows edition, then restarts."/>
+                  </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}">
+                  <StackPanel>
+                    <TextBlock Style="{StaticResource CardTitle}" Text="Tools"/>
+                    <Button x:Name="AdvDiagnosticsButton" Style="{StaticResource SecondaryButton}" Content="Run Autopilot diagnostics" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <TextBlock Style="{StaticResource HintText}" Margin="2,0,0,12" Text="Reads this machine's Autopilot and enrolment state from the local event logs and registry."/>
+                    <Button x:Name="AdvWindowsUpdateButton" Style="{StaticResource SecondaryButton}" Content="Install Windows updates" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <TextBlock Style="{StaticResource HintText}" Margin="2,0,0,0" Text="Uses the in-box Windows Update agent, so no module download is needed. Runs in its own window because the device may restart."/>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+
+              <StackPanel Grid.Column="1">
+                <Border Style="{StaticResource Card}">
+                  <StackPanel>
+                    <TextBlock Style="{StaticResource CardTitle}" Text="Engine"/>
+                    <TextBlock x:Name="AdvEnginePath" Style="{StaticResource HintText}" Margin="0,0,0,6" Text=""/>
+                    <TextBlock x:Name="AdvEngineIntegrity" Style="{StaticResource HintText}" Margin="0,0,0,10" Text=""/>
+                    <Button x:Name="AdvVerifyEngineButton" Style="{StaticResource SecondaryButton}" Content="Verify engine integrity" HorizontalAlignment="Stretch"/>
+
+                    <Border Style="{StaticResource Divider}"/>
+
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="SIGN-IN PREREQUISITE"/>
+                    <TextBlock x:Name="AdvGraphStatus" Style="{StaticResource HintText}" Margin="0,0,0,10" Text="Checking..."/>
+                    <Button x:Name="AdvRepairGraphButton" Style="{StaticResource SecondaryButton}" Content="Repair sign-in module" HorizontalAlignment="Stretch"/>
+                    <TextBlock Style="{StaticResource HintText}" Text="Reinstalls Microsoft.Graph.Authentication for all users at the version the engine expects."/>
+                  </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}">
+                  <StackPanel>
+                    <TextBlock Style="{StaticResource CardTitle}" Text="Diagnostics"/>
+                    <CheckBox x:Name="AdvShowConsoleCheck" Content="Show the engine console window"/>
+                    <TextBlock Style="{StaticResource HintText}" Text="Useful if a run appears to stall. Output still appears in this window either way."/>
+                    <Button x:Name="AdvOpenWorkDirButton" Style="{StaticResource SecondaryButton}" Content="Open working folder" HorizontalAlignment="Stretch" Margin="0,12,0,0"/>
+                  </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}">
+                  <StackPanel>
+                    <TextBlock Style="{StaticResource CardTitle}" Text="About"/>
+
+                    <TextBlock Text="Autopilot Import GUI (Community)" FontSize="13" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="AboutVersion" Style="{StaticResource HintText}" Margin="0,3,0,0" Text=""/>
+
+                    <TextBlock Text="Built by Mark Orr" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="0,12,0,0"/>
+                    <Button x:Name="AboutGitHubLink" Style="{StaticResource LinkButton}" Content="github.com/markorr321" Margin="0,5,0,0"/>
+                    <Button x:Name="AboutSiteLink" Style="{StaticResource LinkButton}" Content="orr365.tools" Margin="0,4,0,0"/>
+
+                    <Border Style="{StaticResource Divider}"/>
+
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="BUILT ON"/>
+                    <TextBlock Text="Windows Autopilot Community script by Andrew S Taylor" Style="{StaticResource HintText}" Margin="0,0,0,0"/>
+                    <Button x:Name="AboutEngineLink" Style="{StaticResource LinkButton}" Content="github.com/andrew-s-taylor/WindowsAutopilotInfo" Margin="0,5,0,0"/>
+                    <TextBlock Text="Original concept: AutoPilot_Import_GUI by Ugur Koc" Style="{StaticResource HintText}" Margin="0,10,0,0"/>
+                    <Button x:Name="AboutOriginalLink" Style="{StaticResource LinkButton}" Content="github.com/ugurkocde/AutoPilot_Import_GUI" Margin="0,5,0,0"/>
+
+                    <TextBlock Text="MIT licensed." Style="{StaticResource HintText}" Margin="0,12,0,0"/>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+            </Grid>
+          </ScrollViewer>
+        </Grid>
+
+        <!-- ================ Logs ================ -->
+        <Grid x:Name="PageLogs" Margin="24,20,24,16" Visibility="Collapsed">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+          </Grid.RowDefinitions>
+
+          <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Style="{StaticResource PageTitle}" Text="Logs"/>
+            <TextBlock Style="{StaticResource PageSubtitle}" Text="Everything this session has done, including the full output of each engine run."/>
+          </StackPanel>
+
+          <Grid Grid.Row="1" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Button x:Name="LogsRefreshButton" Grid.Column="0" Style="{StaticResource SecondaryButton}" Content="Refresh" Margin="0,0,8,0"/>
+            <Button x:Name="LogsCopyButton" Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Copy all" Margin="0,0,8,0"/>
+            <Button x:Name="LogsOpenFolderButton" Grid.Column="2" Style="{StaticResource SecondaryButton}" Content="Open log folder" Margin="0,0,16,0"/>
+            <TextBlock x:Name="LogsPathText" Grid.Column="3" VerticalAlignment="Center" Foreground="{StaticResource TextDisabled}" FontSize="11" TextTrimming="CharacterEllipsis" Text=""/>
+          </Grid>
+
+          <TextBox x:Name="LogsOutput" Grid.Row="2" Style="{StaticResource OutputBox}"/>
+        </Grid>
+
+      </Grid>
+    </Grid>
+
+    <!-- ==================== status strip ==================== -->
+    <Border Grid.Row="2" Background="#1F1F1F" BorderBrush="#2A2A2A" BorderThickness="0,1,0,0" Padding="20,10">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid Grid.Row="0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+          </Grid.ColumnDefinitions>
+          <TextBlock x:Name="StatusText" Grid.Column="0" Foreground="{StaticResource TextSecondary}" FontSize="12"
+                     TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Text="Ready."/>
+          <TextBlock x:Name="StatusStage" Grid.Column="1" Foreground="{StaticResource TextDisabled}" FontSize="11"
+                     VerticalAlignment="Center" Margin="16,0,0,0" Text=""/>
+        </Grid>
+        <ProgressBar x:Name="StatusProgress" Grid.Row="1" Margin="0,8,0,0" Minimum="0" Maximum="100" Value="0"/>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

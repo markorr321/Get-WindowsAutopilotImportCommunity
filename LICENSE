@@ -1,0 +1,46 @@
+MIT License
+
+Copyright (c) 2026 Mark Orr
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---------------------------------------------------------------------------
+THIRD-PARTY COMPONENTS
+---------------------------------------------------------------------------
+
+This project bundles, unmodified, the Community Version scripts from
+WindowsAutopilotInfo by Andrew S Taylor, used under the MIT License:
+
+    get-windowsautopilotinfocommunity.ps1   (v5.0.16)
+    Get-AutopilotDiagnosticsCommunity.ps1   (v6.3)
+
+    Copyright (c) Andrew S Taylor
+    https://github.com/andrew-s-taylor/WindowsAutopilotInfo
+
+Those files retain their original headers and Authenticode signatures and are
+redistributed byte-for-byte. See vendor/VERSION.json for the pinned commit and
+checksums.
+
+This project is a rewrite of, and takes UI inspiration from, AutoPilot_Import_GUI
+by Ugur Koc, used under the MIT License:
+
+    Copyright (c) 2023 Ugur Koc
+    https://github.com/ugurkocde/AutoPilot_Import_GUI
+
+No code from that project is redistributed here.

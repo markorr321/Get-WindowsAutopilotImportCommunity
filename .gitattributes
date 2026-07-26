@@ -1,0 +1,18 @@
+# Git applies the LAST matching pattern for a given attribute, so the general rule comes
+# first and the exceptions follow it.
+
+# Normalise text in the repository, check out CRLF: this is a Windows PowerShell project.
+* text=auto eol=crlf
+
+*.png binary
+
+# Never touch the vendored community scripts. They are Authenticode-signed by Andrew S Taylor
+# and redistributed byte-for-byte; any line-ending translation invalidates both the signature
+# and the SHA256 recorded in vendor/VERSION.json, which build.ps1 and Test-ApVendorScript
+# both verify. -diff also keeps these 200 KB of signed script out of diffs.
+vendor/*.ps1 -text -diff
+
+# Generated single-file build. Treated as binary for diff purposes only: it is ~535 KB and
+# largely base64, so a textual diff is noise. Line endings still normalise, which is safe
+# because the embedded signed payloads are base64 and decoded back to exact bytes at runtime.
+dist/*.ps1 -diff

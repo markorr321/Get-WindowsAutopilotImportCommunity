@@ -1,0 +1,31 @@
+{
+  "_comment": "Third-party scripts vendored byte-exact so their Authenticode signatures remain valid. Do not reformat or re-save these files. Regenerate this manifest with build.ps1 -UpdateVendorManifest.",
+  "source": {
+    "repository": "https://github.com/andrew-s-taylor/WindowsAutopilotInfo",
+    "commit": "a0d2a1c7c1882c38576391b19157ac64b6dc7576",
+    "path": "Community Version",
+    "retrieved": "2026-07-26",
+    "license": "MIT",
+    "author": "Andrew S Taylor"
+  },
+  "scripts": [
+    {
+      "file": "get-windowsautopilotinfocommunity.ps1",
+      "version": "5.0.16",
+      "sha256": "EED8FA85F0DC06DFC0476F701E7FE9EAF1744FCE9B71F50E8D5419CAA6B20227",
+      "bytes": 125470,
+      "signer": "CN=ANDREWSTAYLOR.COM LTD, O=ANDREWSTAYLOR.COM LTD, L=Whitley Bay, C=GB",
+      "role": "engine",
+      "psGalleryName": "Get-WindowsAutopilotInfoCommunity"
+    },
+    {
+      "file": "Get-AutopilotDiagnosticsCommunity.ps1",
+      "version": "6.3",
+      "sha256": "35E166838057A3E83B5E79D4A78AE30E382AB5601D69EDA8688F4D11E8058DB4",
+      "bytes": 78041,
+      "signer": "CN=ANDREWSTAYLOR.COM LTD, O=ANDREWSTAYLOR.COM LTD, L=Whitley Bay, C=GB",
+      "role": "diagnostics",
+      "psGalleryName": "Get-AutopilotDiagnosticsCommunity"
+    }
+  ]
+}
