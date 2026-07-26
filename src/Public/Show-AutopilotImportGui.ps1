@@ -374,6 +374,9 @@ function Sync-ApModeUi {
     $el.OptionsV1Section.Visibility = if ($isV2) { 'Collapsed' } else { 'Visible' }
     $el.OptionsV2Section.Visibility = if ($isV2) { 'Visible' } else { 'Collapsed' }
 
+    # v1 delegates its restart to the engine's -Reboot, so the on-demand button is a v2 affair.
+    $el.RestartNowButton.Visibility = if ($isV2) { 'Visible' } else { 'Collapsed' }
+
     $el.CardDetails.Opacity = if ($isV2) { 0.55 } else { 1.0 }
 
     $el.IdentifierPreviewLabel.Visibility = if ($isV2) { 'Visible' } else { 'Collapsed' }
@@ -1048,6 +1051,26 @@ function Initialize-ApGui {
     })
 
     $el.CancelButton.Add_Click({ Stop-ApGuiRun })
+
+    $el.RestartNowButton.Add_Click({
+        # Refuse mid-run: restarting during an import abandons it half-finished and the log
+        # is lost with the session.
+        if ($script:ApRun -and -not $script:ApRun.IsFinished) {
+            Show-ApDialog -Title 'A run is in progress' -Owner $script:ApWin `
+                -Message 'Wait for the current operation to finish, or cancel it, before restarting.' | Out-Null
+            return
+        }
+
+        $proceed = Show-ApDialog -Title 'Restart this device now' -Owner $script:ApWin -ShowCancel `
+            -ConfirmText 'Restart now' -CancelText 'Not yet' -Danger `
+            -Message ('This device will restart immediately. Anything unsaved will be lost.' + [Environment]::NewLine + [Environment]::NewLine +
+                      'Before restarting, make sure this device is a member of the Entra group targeted by your ' +
+                      'Device Preparation policy, or it will return to OOBE before the policy can apply.')
+        if (-not $proceed) { return }
+
+        Set-ApStatus -Text 'Restarting...'
+        Invoke-ApRestartComputer | Out-Null
+    })
 
     # ---------- device page ----------
     $el.RefreshDeviceButton.Add_Click({

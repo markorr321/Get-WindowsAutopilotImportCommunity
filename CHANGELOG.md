@@ -19,6 +19,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
   policy: restarting before this device is a member of that group returns it to OOBE before the
   policy can apply. Persisted as `rebootAfterV2Import` in `config.json`, off by default.
 
+- **A "Restart now" button** in v2 mode, in the pinned actions row beside Register. This is
+  usually the one you actually want: import the identifier, add the device to the policy's
+  Entra group, then come back and restart. The automatic checkbox cannot wait for that group
+  membership, so on its own it restarts too early for most workflows.
+
+  It refuses while a run is in progress, and confirms before restarting. It lives in the
+  actions row rather than the Options card deliberately — placed in the card it laid out at
+  y=498 inside a form area that stops scrolling around y=470, so it was clipped below the fold
+  and effectively invisible. The harness now asserts it is not inside a `ScrollViewer`.
+
 ### Changed
 
 - The Options card now swaps its contents by mode instead of dimming: v1 shows the assignment

@@ -59,7 +59,7 @@ Website : https://orr365.tools
 License : MIT
 
 GENERATED FILE. Do not edit by hand: change the sources under src\ and re-run build.ps1.
-Built 2026-07-26 06:21:47 with engine v5.0.16.
+Built 2026-07-26 06:31:13 with engine v5.0.16.
 
 Autopilot engine: get-windowsautopilotinfocommunity.ps1 (c) Andrew S Taylor, MIT, embedded
 unmodified with its Authenticode signature intact.
@@ -291,6 +291,9 @@ $script:ApEmbeddedXaml['MainWindow'] = @'
                     <CheckBox x:Name="RebootV2Check" Content="Restart this device after the identifier is imported"/>
                     <TextBlock Style="{StaticResource HintText}"
                                Text="Device Preparation targets devices through the Entra group on the policy. Restart only if this device is already a member of that group, otherwise it will return to OOBE before the policy can apply."/>
+
+                    <TextBlock Style="{StaticResource HintText}" Margin="2,10,0,0"
+                               Text="To restart later instead, once the device is in that group, use Restart now beside the register button."/>
                   </StackPanel>
                 </StackPanel>
               </Border>
@@ -357,16 +360,21 @@ $script:ApEmbeddedXaml['MainWindow'] = @'
           </Grid>
           </ScrollViewer>
 
-          <!-- actions -->
+          <!-- Actions. This row is pinned outside the scrolling form, so anything here is
+               always reachable. The on-demand restart lives here rather than in the Options
+               card for exactly that reason: in the card it sat below the fold. -->
           <Grid Grid.Row="2" Margin="0,12,0,12">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
               <ColumnDefinition Width="Auto"/>
               <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <Button x:Name="RegisterButton" Grid.Column="0" Style="{StaticResource PrimaryButton}" Content="REGISTER THIS DEVICE" Margin="0,0,10,0"/>
             <Button x:Name="PreviewButton" Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Preview command" Height="48" Margin="0,0,10,0"/>
             <Button x:Name="CancelButton" Grid.Column="2" Style="{StaticResource SecondaryButton}" Content="Cancel" Height="48" IsEnabled="False"/>
+            <!-- Device Preparation only; shown by Sync-ApModeUi. -->
+            <Button x:Name="RestartNowButton" Grid.Column="3" Style="{StaticResource DangerButton}" Content="Restart now" Height="48" Margin="10,0,0,0" Visibility="Collapsed"/>
           </Grid>
 
           <!-- live output -->
@@ -7361,6 +7369,9 @@ function Sync-ApModeUi {
     $el.OptionsV1Section.Visibility = if ($isV2) { 'Collapsed' } else { 'Visible' }
     $el.OptionsV2Section.Visibility = if ($isV2) { 'Visible' } else { 'Collapsed' }
 
+    # v1 delegates its restart to the engine's -Reboot, so the on-demand button is a v2 affair.
+    $el.RestartNowButton.Visibility = if ($isV2) { 'Visible' } else { 'Collapsed' }
+
     $el.CardDetails.Opacity = if ($isV2) { 0.55 } else { 1.0 }
 
     $el.IdentifierPreviewLabel.Visibility = if ($isV2) { 'Visible' } else { 'Collapsed' }
@@ -8035,6 +8046,26 @@ function Initialize-ApGui {
     })
 
     $el.CancelButton.Add_Click({ Stop-ApGuiRun })
+
+    $el.RestartNowButton.Add_Click({
+        # Refuse mid-run: restarting during an import abandons it half-finished and the log
+        # is lost with the session.
+        if ($script:ApRun -and -not $script:ApRun.IsFinished) {
+            Show-ApDialog -Title 'A run is in progress' -Owner $script:ApWin `
+                -Message 'Wait for the current operation to finish, or cancel it, before restarting.' | Out-Null
+            return
+        }
+
+        $proceed = Show-ApDialog -Title 'Restart this device now' -Owner $script:ApWin -ShowCancel `
+            -ConfirmText 'Restart now' -CancelText 'Not yet' -Danger `
+            -Message ('This device will restart immediately. Anything unsaved will be lost.' + [Environment]::NewLine + [Environment]::NewLine +
+                      'Before restarting, make sure this device is a member of the Entra group targeted by your ' +
+                      'Device Preparation policy, or it will return to OOBE before the policy can apply.')
+        if (-not $proceed) { return }
+
+        Set-ApStatus -Text 'Restarting...'
+        Invoke-ApRestartComputer | Out-Null
+    })
 
     # ---------- device page ----------
     $el.RefreshDeviceButton.Add_Click({

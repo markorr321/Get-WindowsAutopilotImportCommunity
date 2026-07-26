@@ -196,6 +196,9 @@
                     <CheckBox x:Name="RebootV2Check" Content="Restart this device after the identifier is imported"/>
                     <TextBlock Style="{StaticResource HintText}"
                                Text="Device Preparation targets devices through the Entra group on the policy. Restart only if this device is already a member of that group, otherwise it will return to OOBE before the policy can apply."/>
+
+                    <TextBlock Style="{StaticResource HintText}" Margin="2,10,0,0"
+                               Text="To restart later instead, once the device is in that group, use Restart now beside the register button."/>
                   </StackPanel>
                 </StackPanel>
               </Border>
@@ -262,16 +265,21 @@
           </Grid>
           </ScrollViewer>
 
-          <!-- actions -->
+          <!-- Actions. This row is pinned outside the scrolling form, so anything here is
+               always reachable. The on-demand restart lives here rather than in the Options
+               card for exactly that reason: in the card it sat below the fold. -->
           <Grid Grid.Row="2" Margin="0,12,0,12">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
               <ColumnDefinition Width="Auto"/>
               <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <Button x:Name="RegisterButton" Grid.Column="0" Style="{StaticResource PrimaryButton}" Content="REGISTER THIS DEVICE" Margin="0,0,10,0"/>
             <Button x:Name="PreviewButton" Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Preview command" Height="48" Margin="0,0,10,0"/>
             <Button x:Name="CancelButton" Grid.Column="2" Style="{StaticResource SecondaryButton}" Content="Cancel" Height="48" IsEnabled="False"/>
+            <!-- Device Preparation only; shown by Sync-ApModeUi. -->
+            <Button x:Name="RestartNowButton" Grid.Column="3" Style="{StaticResource DangerButton}" Content="Restart now" Height="48" Margin="10,0,0,0" Visibility="Collapsed"/>
           </Grid>
 
           <!-- live output -->
