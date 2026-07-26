@@ -45,6 +45,11 @@ function New-ApRegistrationRequest {
         WaitForAssignment    = $false
         Reboot               = $false
 
+        # Device Preparation (v2) restart. Deliberately NOT an engine switch: the engine's
+        # -Reboot is nested inside its assignment wait, which the -identifier path never
+        # reaches, so the GUI performs this restart itself once the import succeeds.
+        RebootAfterImport    = $false
+
         # update | delete | skipcheck
         ExistingDevicePolicy = 'update'
 

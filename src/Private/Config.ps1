@@ -30,6 +30,10 @@ function Get-ApDefaultConfig {
         lastAddToGroup        = ''
         waitForAssignment     = $true
         rebootWhenAssigned    = $true
+
+        # Device Preparation (v2) restart-after-import. Off by default: a restart straight out
+        # of OOBE is premature unless the device is already in the policy's Entra group.
+        rebootAfterV2Import   = $false
         existingDevicePolicy  = 'update'      # update | delete
         confirmBeforeRegister = $true
 

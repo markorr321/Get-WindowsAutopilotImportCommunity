@@ -1,5 +1,5 @@
 ﻿<#PSScriptInfo
-.VERSION 1.0.0
+.VERSION 1.1.0
 .GUID 6f2b9c14-8d3e-4a71-9c5f-1b0e7a4d2c98
 .AUTHOR Mark Orr
 .COMPANYNAME orr365.tools
@@ -8,7 +8,7 @@
 .LICENSEURI https://github.com/markorr321/Get-WindowsAutopilotImportCommunity/blob/main/LICENSE
 .PROJECTURI https://github.com/markorr321/Get-WindowsAutopilotImportCommunity
 .RELEASENOTES
-1.0.0 Single-file build. Autopilot v1 and v2 (Device Preparation) support.
+1.1.0 Single-file build. Autopilot v1 and v2 (Device Preparation) support.
 #>
 
 <#
@@ -59,7 +59,7 @@ Website : https://orr365.tools
 License : MIT
 
 GENERATED FILE. Do not edit by hand: change the sources under src\ and re-run build.ps1.
-Built 2026-07-26 05:46:02 with engine v5.0.16.
+Built 2026-07-26 06:21:47 with engine v5.0.16.
 
 Autopilot engine: get-windowsautopilotinfocommunity.ps1 (c) Andrew S Taylor, MIT, embedded
 unmodified with its Authenticode signature intact.
@@ -271,13 +271,27 @@ $script:ApEmbeddedXaml['MainWindow'] = @'
               <Border x:Name="CardOptions" Style="{StaticResource Card}">
                 <StackPanel>
                   <TextBlock Style="{StaticResource CardTitle}" Text="Options"/>
-                  <CheckBox x:Name="WaitAssignCheck" Content="Wait for the deployment profile to be assigned"/>
-                  <CheckBox x:Name="RebootCheck" Content="Restart this device once the profile is assigned"/>
 
-                  <TextBlock Style="{StaticResource FieldLabel}" Text="IF THIS SERIAL IS ALREADY REGISTERED" Margin="2,14,0,6"/>
-                  <RadioButton x:Name="PolicyUpdate" Style="{StaticResource ChoiceRadio}" GroupName="Existing" IsChecked="True" Content="Update its group tag"/>
-                  <RadioButton x:Name="PolicyDelete" Style="{StaticResource ChoiceRadio}" GroupName="Existing" Content="Delete from Autopilot, Intune and Entra ID, then re-add"/>
-                  <RadioButton x:Name="PolicySkip" Style="{StaticResource ChoiceRadio}" GroupName="Existing" Content="Assume it is new (skips the lookup, much faster on large tenants)"/>
+                  <!-- Autopilot v1 only: all of these map to engine switches that the
+                       -identifier code path never reads. -->
+                  <StackPanel x:Name="OptionsV1Section">
+                    <CheckBox x:Name="WaitAssignCheck" Content="Wait for the deployment profile to be assigned"/>
+                    <CheckBox x:Name="RebootCheck" Content="Restart this device once the profile is assigned"/>
+
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="IF THIS SERIAL IS ALREADY REGISTERED" Margin="2,14,0,6"/>
+                    <RadioButton x:Name="PolicyUpdate" Style="{StaticResource ChoiceRadio}" GroupName="Existing" IsChecked="True" Content="Update its group tag"/>
+                    <RadioButton x:Name="PolicyDelete" Style="{StaticResource ChoiceRadio}" GroupName="Existing" Content="Delete from Autopilot, Intune and Entra ID, then re-add"/>
+                    <RadioButton x:Name="PolicySkip" Style="{StaticResource ChoiceRadio}" GroupName="Existing" Content="Assume it is new (skips the lookup, much faster on large tenants)"/>
+                  </StackPanel>
+
+                  <!-- Device Preparation only. This restart is performed by this tool, not by
+                       the engine: the engine's -Reboot sits inside its assignment wait, which
+                       the identifier path never reaches. -->
+                  <StackPanel x:Name="OptionsV2Section" Visibility="Collapsed">
+                    <CheckBox x:Name="RebootV2Check" Content="Restart this device after the identifier is imported"/>
+                    <TextBlock Style="{StaticResource HintText}"
+                               Text="Device Preparation targets devices through the Entra group on the policy. Restart only if this device is already a member of that group, otherwise it will return to OOBE before the policy can apply."/>
+                  </StackPanel>
                 </StackPanel>
               </Border>
             </StackPanel>
@@ -3953,6 +3967,10 @@ function Get-ApDefaultConfig {
         lastAddToGroup        = ''
         waitForAssignment     = $true
         rebootWhenAssigned    = $true
+
+        # Device Preparation (v2) restart-after-import. Off by default: a restart straight out
+        # of OOBE is premature unless the device is already in the policy's Entra group.
+        rebootAfterV2Import   = $false
         existingDevicePolicy  = 'update'      # update | delete
         confirmBeforeRegister = $true
 
@@ -4791,6 +4809,11 @@ function New-ApRegistrationRequest {
 
         WaitForAssignment    = $false
         Reboot               = $false
+
+        # Device Preparation (v2) restart. Deliberately NOT an engine switch: the engine's
+        # -Reboot is nested inside its assignment wait, which the -identifier path never
+        # reaches, so the GUI performs this restart itself once the import succeeds.
+        RebootAfterImport    = $false
 
         # update | delete | skipcheck
         ExistingDevicePolicy = 'update'
@@ -6976,8 +6999,11 @@ $script:ApClockTimer = $null
 $script:ApActiveOutput = $null
 $script:ApNetworkResults = @()
 $script:ApGraphCheck = $null
+# Set when a v2 register run is launched with the restart option ticked; consumed once the
+# run completes successfully.
+$script:ApPendingV2Reboot = $false
 $script:ApEnginePath = $null
-$script:ApAppVersion = '1.0.0'
+$script:ApAppVersion = '1.1.0'
 $script:ApAuthor = 'Mark Orr'
 $script:ApAuthorHandle = '@markorr321'
 $script:ApAuthorSite = 'https://orr365.tools'
@@ -7316,8 +7342,7 @@ function Sync-ApModeUi {
     $el = $script:ApEl
     $isV2 = [bool]$el.ModeV2.IsChecked
 
-    foreach ($name in @('GroupTagCombo', 'AssignedUserBox', 'ComputerNameBox', 'AddToGroupBox',
-                        'WaitAssignCheck', 'RebootCheck', 'PolicyUpdate', 'PolicyDelete', 'PolicySkip')) {
+    foreach ($name in @('GroupTagCombo', 'AssignedUserBox', 'ComputerNameBox', 'AddToGroupBox')) {
         $el[$name].IsEnabled = -not $isV2
     }
 
@@ -7326,8 +7351,17 @@ function Sync-ApModeUi {
     # Entra group on the policy instead, so leaving it on screen invites a wasted entry.
     $el.GroupTagSection.Visibility = if ($isV2) { 'Collapsed' } else { 'Visible' }
 
+    # Every field in this card (group tag, assigned user, computer name, Entra group) is
+    # ignored by the identifier path, so in v2 the whole card goes. Dimming it was worse than
+    # useless: three dead fields pushed the one live v2 option, the restart, below the fold.
+    $el.CardDetails.Visibility = if ($isV2) { 'Collapsed' } else { 'Visible' }
+
+    # Swap the whole options block rather than dimming it. The v1 controls map to engine
+    # switches the identifier path ignores; the v2 restart is performed by this tool.
+    $el.OptionsV1Section.Visibility = if ($isV2) { 'Collapsed' } else { 'Visible' }
+    $el.OptionsV2Section.Visibility = if ($isV2) { 'Visible' } else { 'Collapsed' }
+
     $el.CardDetails.Opacity = if ($isV2) { 0.55 } else { 1.0 }
-    $el.CardOptions.Opacity = if ($isV2) { 0.55 } else { 1.0 }
 
     $el.IdentifierPreviewLabel.Visibility = if ($isV2) { 'Visible' } else { 'Collapsed' }
     $el.IdentifierPreviewBox.Visibility = if ($isV2) { 'Visible' } else { 'Collapsed' }
@@ -7556,10 +7590,60 @@ function Invoke-ApRunTick {
 
     Update-ApLogsPage
 
+    # Device Preparation restart. Only on a clean run: never reboot after a failure or a
+    # cancel, or the operator loses the log and the device leaves OOBE unregistered.
+    if ($script:ApPendingV2Reboot -and -not $failed -and $state.IsComplete) {
+        $script:ApPendingV2Reboot = $false
+        Add-ApOutput -Box $script:ApActiveOutput -Lines @('', '[GUI] Identifier imported. Restarting this device now.')
+        Set-ApStatus -Text 'Identifier imported. Restarting...' -Percent 100
+        Invoke-ApRestartComputer | Out-Null
+        return
+    }
+    $script:ApPendingV2Reboot = $false
+
     if ($state.IsError) {
         Show-ApDialog -Title 'The run reported a problem' -Owner $script:ApWin `
                       -Message $state.ErrorMessage `
                       -Detail "Full log:`r`n$($run.LogPath)" | Out-Null
+    }
+}
+
+function Invoke-ApRestartComputer {
+    <#
+    .SYNOPSIS
+    Restarts this machine.
+
+    .DESCRIPTION
+    Used for the Device Preparation (v2) restart option. Autopilot v1 delegates its restart to
+    the engine's -Reboot switch, but that switch is nested inside the engine's
+    assignment-wait block, which the -identifier path never reaches. So for v2 the restart has
+    to happen here.
+
+    Restart-Computer comes from Microsoft.PowerShell.Management, which Windows PowerShell loads
+    at startup rather than auto-loading, so it is unaffected by the module-shadowing problems
+    that affect the engine process. shutdown.exe is kept as a fallback anyway: it is a native
+    binary and needs no module resolution at all.
+    #>
+    [CmdletBinding()]
+    param()
+
+    Write-ApLog 'Restarting the computer at the operator''s request.' -Level WARN
+
+    try {
+        Restart-Computer -Force -ErrorAction Stop
+        return $true
+    }
+    catch {
+        Write-ApLog "Restart-Computer failed: $($_.Exception.Message). Falling back to shutdown.exe." -Level WARN
+        try {
+            Start-Process -FilePath (Join-Path $env:WINDIR 'System32\shutdown.exe') `
+                          -ArgumentList '/r', '/t', '0' -WindowStyle Hidden -ErrorAction Stop | Out-Null
+            return $true
+        }
+        catch {
+            Write-ApLog "shutdown.exe also failed: $($_.Exception.Message)" -Level ERROR
+            return $false
+        }
     }
 }
 
@@ -7804,6 +7888,7 @@ function Initialize-ApGui {
     $el.AddToGroupBox.Text = "$($config.lastAddToGroup)"
     $el.WaitAssignCheck.IsChecked = [bool]$config.waitForAssignment
     $el.RebootCheck.IsChecked = [bool]$config.rebootWhenAssigned
+    $el.RebootV2Check.IsChecked = [bool]$config.rebootAfterV2Import
     $el.AdvShowConsoleCheck.IsChecked = [bool]$config.showConsoleWindow
 
     switch ("$($config.existingDevicePolicy)") {
@@ -7876,6 +7961,20 @@ function Initialize-ApGui {
             if (-not $proceed) { return }
         }
 
+        # Device Preparation restart: confirm, because a restart from OOBE is disruptive and
+        # is premature unless the device is already in the policy's Entra group.
+        $wantsV2Reboot = ($request.Mode -eq 'v2') -and [bool]$el.RebootV2Check.IsChecked
+        if ($wantsV2Reboot) {
+            $proceed = Show-ApDialog -Title 'Restart after import' -Owner $script:ApWin -ShowCancel `
+                -ConfirmText 'Import and restart' `
+                -Message ('This device will restart as soon as the identifier is imported. ' +
+                          'Device Preparation targets devices through the Entra group on the policy, so ' +
+                          'restart only if this device is already a member of that group. It will not ' +
+                          'restart if the import fails or you cancel.')
+            if (-not $proceed) { return }
+        }
+        $script:ApPendingV2Reboot = $wantsV2Reboot
+
         if (Test-ApDestructiveRequest $request) {
             $detail = Get-ApPreviewCommand -Parameters $built.Parameters -ScriptPath (Split-Path -Leaf $script:ApEnginePath)
             $lines = New-Object System.Collections.Generic.List[string]
@@ -7901,6 +8000,7 @@ function Initialize-ApGui {
         Set-ApConfigValue 'lastAddToGroup' $request.AddToGroup
         Set-ApConfigValue 'waitForAssignment' ([bool]$request.WaitForAssignment)
         Set-ApConfigValue 'rebootWhenAssigned' ([bool]$request.Reboot)
+        Set-ApConfigValue 'rebootAfterV2Import' ([bool]$el.RebootV2Check.IsChecked)
         Set-ApConfigValue 'existingDevicePolicy' $request.ExistingDevicePolicy
         Save-ApConfig | Out-Null
         $el.GroupTagCombo.ItemsSource = @((Get-ApConfig).groupTagHistory)

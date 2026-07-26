@@ -3,6 +3,30 @@
 All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/).
 
+## [1.1.0] - 2026-07-26
+
+### Added
+
+- **Restart after import for Device Preparation (v2).** The engine cannot do this: its
+  `-Reboot` switch sits inside the assignment-wait block that only the Autopilot v1 path
+  reaches, so `-identifier` runs ignore it entirely. The restart is therefore performed by the
+  GUI once the import reports success, via `Restart-Computer -Force` with a `shutdown.exe /r`
+  fallback. No new switch is sent to the engine; v2 runs still pass only `-identifier -Online`.
+
+  It only fires on a clean run — never after a failure or a cancel, because rebooting then
+  would throw away the log and leave the device unregistered at OOBE. Ticking it prompts for
+  confirmation first, since Device Preparation targets devices through the Entra group on the
+  policy: restarting before this device is a member of that group returns it to OOBE before the
+  policy can apply. Persisted as `rebootAfterV2Import` in `config.json`, off by default.
+
+### Changed
+
+- The Options card now swaps its contents by mode instead of dimming: v1 shows the assignment
+  wait, reboot and existing-device policy; v2 shows only the restart option.
+- The whole **Registration details** card is hidden in v2, not just the group tag. Every field
+  in it (group tag, assigned user, computer name, Entra group) is ignored by the identifier
+  path, and leaving them on screen dimmed pushed the one live v2 option below the fold.
+
 ## [1.0.0] - 2026-07-26
 
 Published to the PowerShell Gallery as

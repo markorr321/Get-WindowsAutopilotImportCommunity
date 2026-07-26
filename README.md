@@ -32,7 +32,9 @@ The mode toggle is not cosmetic — the two paths are mutually exclusive in the 
 
 **Autopilot v1** uploads the 4K hardware hash to `windowsAutopilotDeviceIdentities`. Group tag, assigned user, computer name, Entra group and profile-assignment waiting all apply. Requires administrator rights, and many virtual machines cannot produce a hash at all.
 
-**Autopilot v2 (Device Preparation)** imports a `Manufacturer,Model,Serial` identifier to `importedDeviceIdentities`. No hardware hash is needed, so it works on VMs. Devices are targeted by the **Entra security group on your Device Preparation policy**, not by a group tag — so group tag, assigned user, assignment waiting and reboot do not apply. The group tag field is **hidden** in this mode and the rest are disabled, rather than pretending otherwise.
+**Autopilot v2 (Device Preparation)** imports a `Manufacturer,Model,Serial` identifier to `importedDeviceIdentities`. No hardware hash is needed, so it works on VMs. Devices are targeted by the **Entra security group on your Device Preparation policy**, not by a group tag — so group tag, assigned user, computer name, Entra group and assignment waiting do not apply, and the whole Registration details card is hidden in this mode rather than shown dimmed.
+
+v2 does offer **Restart after import**. The engine cannot provide this — its `-Reboot` only runs inside the assignment wait that the identifier path never reaches — so the GUI performs the restart itself once the import succeeds, and only on a clean run. Restart only when the device is already a member of the policy's Entra group; otherwise it returns to OOBE before the policy can apply.
 
 ![Device Preparation mode](assets/02-register-v2.png)
 

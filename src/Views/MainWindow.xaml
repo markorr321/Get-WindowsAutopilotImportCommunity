@@ -176,13 +176,27 @@
               <Border x:Name="CardOptions" Style="{StaticResource Card}">
                 <StackPanel>
                   <TextBlock Style="{StaticResource CardTitle}" Text="Options"/>
-                  <CheckBox x:Name="WaitAssignCheck" Content="Wait for the deployment profile to be assigned"/>
-                  <CheckBox x:Name="RebootCheck" Content="Restart this device once the profile is assigned"/>
 
-                  <TextBlock Style="{StaticResource FieldLabel}" Text="IF THIS SERIAL IS ALREADY REGISTERED" Margin="2,14,0,6"/>
-                  <RadioButton x:Name="PolicyUpdate" Style="{StaticResource ChoiceRadio}" GroupName="Existing" IsChecked="True" Content="Update its group tag"/>
-                  <RadioButton x:Name="PolicyDelete" Style="{StaticResource ChoiceRadio}" GroupName="Existing" Content="Delete from Autopilot, Intune and Entra ID, then re-add"/>
-                  <RadioButton x:Name="PolicySkip" Style="{StaticResource ChoiceRadio}" GroupName="Existing" Content="Assume it is new (skips the lookup, much faster on large tenants)"/>
+                  <!-- Autopilot v1 only: all of these map to engine switches that the
+                       -identifier code path never reads. -->
+                  <StackPanel x:Name="OptionsV1Section">
+                    <CheckBox x:Name="WaitAssignCheck" Content="Wait for the deployment profile to be assigned"/>
+                    <CheckBox x:Name="RebootCheck" Content="Restart this device once the profile is assigned"/>
+
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="IF THIS SERIAL IS ALREADY REGISTERED" Margin="2,14,0,6"/>
+                    <RadioButton x:Name="PolicyUpdate" Style="{StaticResource ChoiceRadio}" GroupName="Existing" IsChecked="True" Content="Update its group tag"/>
+                    <RadioButton x:Name="PolicyDelete" Style="{StaticResource ChoiceRadio}" GroupName="Existing" Content="Delete from Autopilot, Intune and Entra ID, then re-add"/>
+                    <RadioButton x:Name="PolicySkip" Style="{StaticResource ChoiceRadio}" GroupName="Existing" Content="Assume it is new (skips the lookup, much faster on large tenants)"/>
+                  </StackPanel>
+
+                  <!-- Device Preparation only. This restart is performed by this tool, not by
+                       the engine: the engine's -Reboot sits inside its assignment wait, which
+                       the identifier path never reaches. -->
+                  <StackPanel x:Name="OptionsV2Section" Visibility="Collapsed">
+                    <CheckBox x:Name="RebootV2Check" Content="Restart this device after the identifier is imported"/>
+                    <TextBlock Style="{StaticResource HintText}"
+                               Text="Device Preparation targets devices through the Entra group on the policy. Restart only if this device is already a member of that group, otherwise it will return to OOBE before the policy can apply."/>
+                  </StackPanel>
                 </StackPanel>
               </Border>
             </StackPanel>

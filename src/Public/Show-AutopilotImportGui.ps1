@@ -12,8 +12,11 @@ $script:ApClockTimer = $null
 $script:ApActiveOutput = $null
 $script:ApNetworkResults = @()
 $script:ApGraphCheck = $null
+# Set when a v2 register run is launched with the restart option ticked; consumed once the
+# run completes successfully.
+$script:ApPendingV2Reboot = $false
 $script:ApEnginePath = $null
-$script:ApAppVersion = '1.0.0'
+$script:ApAppVersion = '1.1.0'
 $script:ApAuthor = 'Mark Orr'
 $script:ApAuthorHandle = '@markorr321'
 $script:ApAuthorSite = 'https://orr365.tools'
@@ -352,8 +355,7 @@ function Sync-ApModeUi {
     $el = $script:ApEl
     $isV2 = [bool]$el.ModeV2.IsChecked
 
-    foreach ($name in @('GroupTagCombo', 'AssignedUserBox', 'ComputerNameBox', 'AddToGroupBox',
-                        'WaitAssignCheck', 'RebootCheck', 'PolicyUpdate', 'PolicyDelete', 'PolicySkip')) {
+    foreach ($name in @('GroupTagCombo', 'AssignedUserBox', 'ComputerNameBox', 'AddToGroupBox')) {
         $el[$name].IsEnabled = -not $isV2
     }
 
@@ -362,8 +364,17 @@ function Sync-ApModeUi {
     # Entra group on the policy instead, so leaving it on screen invites a wasted entry.
     $el.GroupTagSection.Visibility = if ($isV2) { 'Collapsed' } else { 'Visible' }
 
+    # Every field in this card (group tag, assigned user, computer name, Entra group) is
+    # ignored by the identifier path, so in v2 the whole card goes. Dimming it was worse than
+    # useless: three dead fields pushed the one live v2 option, the restart, below the fold.
+    $el.CardDetails.Visibility = if ($isV2) { 'Collapsed' } else { 'Visible' }
+
+    # Swap the whole options block rather than dimming it. The v1 controls map to engine
+    # switches the identifier path ignores; the v2 restart is performed by this tool.
+    $el.OptionsV1Section.Visibility = if ($isV2) { 'Collapsed' } else { 'Visible' }
+    $el.OptionsV2Section.Visibility = if ($isV2) { 'Visible' } else { 'Collapsed' }
+
     $el.CardDetails.Opacity = if ($isV2) { 0.55 } else { 1.0 }
-    $el.CardOptions.Opacity = if ($isV2) { 0.55 } else { 1.0 }
 
     $el.IdentifierPreviewLabel.Visibility = if ($isV2) { 'Visible' } else { 'Collapsed' }
     $el.IdentifierPreviewBox.Visibility = if ($isV2) { 'Visible' } else { 'Collapsed' }
@@ -592,10 +603,60 @@ function Invoke-ApRunTick {
 
     Update-ApLogsPage
 
+    # Device Preparation restart. Only on a clean run: never reboot after a failure or a
+    # cancel, or the operator loses the log and the device leaves OOBE unregistered.
+    if ($script:ApPendingV2Reboot -and -not $failed -and $state.IsComplete) {
+        $script:ApPendingV2Reboot = $false
+        Add-ApOutput -Box $script:ApActiveOutput -Lines @('', '[GUI] Identifier imported. Restarting this device now.')
+        Set-ApStatus -Text 'Identifier imported. Restarting...' -Percent 100
+        Invoke-ApRestartComputer | Out-Null
+        return
+    }
+    $script:ApPendingV2Reboot = $false
+
     if ($state.IsError) {
         Show-ApDialog -Title 'The run reported a problem' -Owner $script:ApWin `
                       -Message $state.ErrorMessage `
                       -Detail "Full log:`r`n$($run.LogPath)" | Out-Null
+    }
+}
+
+function Invoke-ApRestartComputer {
+    <#
+    .SYNOPSIS
+    Restarts this machine.
+
+    .DESCRIPTION
+    Used for the Device Preparation (v2) restart option. Autopilot v1 delegates its restart to
+    the engine's -Reboot switch, but that switch is nested inside the engine's
+    assignment-wait block, which the -identifier path never reaches. So for v2 the restart has
+    to happen here.
+
+    Restart-Computer comes from Microsoft.PowerShell.Management, which Windows PowerShell loads
+    at startup rather than auto-loading, so it is unaffected by the module-shadowing problems
+    that affect the engine process. shutdown.exe is kept as a fallback anyway: it is a native
+    binary and needs no module resolution at all.
+    #>
+    [CmdletBinding()]
+    param()
+
+    Write-ApLog 'Restarting the computer at the operator''s request.' -Level WARN
+
+    try {
+        Restart-Computer -Force -ErrorAction Stop
+        return $true
+    }
+    catch {
+        Write-ApLog "Restart-Computer failed: $($_.Exception.Message). Falling back to shutdown.exe." -Level WARN
+        try {
+            Start-Process -FilePath (Join-Path $env:WINDIR 'System32\shutdown.exe') `
+                          -ArgumentList '/r', '/t', '0' -WindowStyle Hidden -ErrorAction Stop | Out-Null
+            return $true
+        }
+        catch {
+            Write-ApLog "shutdown.exe also failed: $($_.Exception.Message)" -Level ERROR
+            return $false
+        }
     }
 }
 
@@ -840,6 +901,7 @@ function Initialize-ApGui {
     $el.AddToGroupBox.Text = "$($config.lastAddToGroup)"
     $el.WaitAssignCheck.IsChecked = [bool]$config.waitForAssignment
     $el.RebootCheck.IsChecked = [bool]$config.rebootWhenAssigned
+    $el.RebootV2Check.IsChecked = [bool]$config.rebootAfterV2Import
     $el.AdvShowConsoleCheck.IsChecked = [bool]$config.showConsoleWindow
 
     switch ("$($config.existingDevicePolicy)") {
@@ -912,6 +974,20 @@ function Initialize-ApGui {
             if (-not $proceed) { return }
         }
 
+        # Device Preparation restart: confirm, because a restart from OOBE is disruptive and
+        # is premature unless the device is already in the policy's Entra group.
+        $wantsV2Reboot = ($request.Mode -eq 'v2') -and [bool]$el.RebootV2Check.IsChecked
+        if ($wantsV2Reboot) {
+            $proceed = Show-ApDialog -Title 'Restart after import' -Owner $script:ApWin -ShowCancel `
+                -ConfirmText 'Import and restart' `
+                -Message ('This device will restart as soon as the identifier is imported. ' +
+                          'Device Preparation targets devices through the Entra group on the policy, so ' +
+                          'restart only if this device is already a member of that group. It will not ' +
+                          'restart if the import fails or you cancel.')
+            if (-not $proceed) { return }
+        }
+        $script:ApPendingV2Reboot = $wantsV2Reboot
+
         if (Test-ApDestructiveRequest $request) {
             $detail = Get-ApPreviewCommand -Parameters $built.Parameters -ScriptPath (Split-Path -Leaf $script:ApEnginePath)
             $lines = New-Object System.Collections.Generic.List[string]
@@ -937,6 +1013,7 @@ function Initialize-ApGui {
         Set-ApConfigValue 'lastAddToGroup' $request.AddToGroup
         Set-ApConfigValue 'waitForAssignment' ([bool]$request.WaitForAssignment)
         Set-ApConfigValue 'rebootWhenAssigned' ([bool]$request.Reboot)
+        Set-ApConfigValue 'rebootAfterV2Import' ([bool]$el.RebootV2Check.IsChecked)
         Set-ApConfigValue 'existingDevicePolicy' $request.ExistingDevicePolicy
         Save-ApConfig | Out-Null
         $el.GroupTagCombo.ItemsSource = @((Get-ApConfig).groupTagHistory)
