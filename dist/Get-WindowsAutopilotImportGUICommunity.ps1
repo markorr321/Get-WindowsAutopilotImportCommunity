@@ -5,28 +5,34 @@
 .COMPANYNAME orr365.tools
 .COPYRIGHT (c) 2026 Mark Orr. MIT License.
 .TAGS Windows Autopilot Intune EntraID DevicePreparation GUI WPF PowerShell OOBE
-.LICENSEURI https://github.com/markorr321/Get-WindowsAutopilotImportGUICommunity/blob/main/LICENSE
-.PROJECTURI https://github.com/markorr321/Get-WindowsAutopilotImportGUICommunity
+.LICENSEURI https://github.com/markorr321/Get-WindowsAutopilotImportCommunity/blob/main/LICENSE
+.PROJECTURI https://github.com/markorr321/Get-WindowsAutopilotImportCommunity
 .RELEASENOTES
 1.0.0 Single-file build. Autopilot v1 and v2 (Device Preparation) support.
 #>
 
 <#
 .SYNOPSIS
-A graphical front end for the Windows Autopilot Community import script, supporting both
-Autopilot v1 (hardware hash) and Autopilot v2 (Device Preparation identifiers).
+A graphical front end for Windows Autopilot device registration, supporting both Autopilot v1
+(hardware hash) and Autopilot v2 (Device Preparation identifiers).
 
 .DESCRIPTION
-Single-file build. Everything is embedded: the window definition, the dark theme, and the
-community engine script itself, so this file runs standalone with no internet access and
-no other files present.
+Registers a Windows device for Autopilot from a resizable dark-themed window, driving the
+Windows Autopilot Community script by Andrew S Taylor.
 
-Drives get-windowsautopilotinfocommunity.ps1 v5.0.16 by Andrew S Taylor,
-streaming its output into a resizable window with staged progress, a cancel button, an
-offline CSV export, a network prerequisite check and a full session log.
+Supports both registration modes: Autopilot v1 uploads the 4K hardware hash, and Autopilot v2
+imports the Manufacturer,Model,Serial device identifier used by Device Preparation policies,
+which needs no hardware hash and therefore works on virtual machines.
 
-GENERATED FILE. Do not edit by hand: change the sources under src\ and re-run build.ps1.
-Built 2026-07-26 05:37:36.
+Runs from a single self-contained file with nothing to download first. The window, the theme
+and the Autopilot engine are all embedded, so it works during OOBE on a restricted network.
+
+Includes live staged progress with a working cancel button, an offline CSV export of both the
+hardware hash and the device identifier, batch import from CSV, a concurrent network
+prerequisite check across the documented Autopilot and Intune endpoints, Autopilot
+diagnostics, and a full session log.
+
+Requires Windows PowerShell 5.1 and administrator rights.
 
 .PARAMETER GroupTag
 Pre-fills the group tag field.
@@ -52,8 +58,11 @@ Author  : Mark Orr (@markorr321)
 Website : https://orr365.tools
 License : MIT
 
-Requires Windows PowerShell 5.1 and administrator rights.
-Autopilot engine: get-windowsautopilotinfocommunity.ps1 (c) Andrew S Taylor, MIT.
+GENERATED FILE. Do not edit by hand: change the sources under src\ and re-run build.ps1.
+Built 2026-07-26 05:46:02 with engine v5.0.16.
+
+Autopilot engine: get-windowsautopilotinfocommunity.ps1 (c) Andrew S Taylor, MIT, embedded
+unmodified with its Authenticode signature intact.
 Inspired by AutoPilot_Import_GUI (c) 2023 Ugur Koc, MIT.
 
 .LINK

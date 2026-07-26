@@ -61,6 +61,32 @@ Does not work in **WinPE** (no WPF). It does work in full Windows **OOBE** via <
 
 ---
 
+## Install from the PowerShell Gallery
+
+```powershell
+Install-Script -Name Get-WindowsAutopilotImportGUICommunity -Scope AllUsers -Force
+Get-WindowsAutopilotImportGUICommunity.ps1
+```
+
+`Install-Script` puts it in `C:\Program Files\WindowsPowerShell\Scripts`, which is on `PATH`.
+
+On a **fresh VM** the Gallery itself usually needs bootstrapping first — a clean Windows image
+has no NuGet provider and treats PSGallery as untrusted, and those prompts are easy to miss:
+
+```powershell
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
+Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+Install-Script -Name Get-WindowsAutopilotImportGUICommunity -Scope AllUsers -Force
+```
+
+> Run all of this in **Windows PowerShell 5.1** (`powershell.exe`), not PowerShell 7. Launching
+> from a PS7 terminal leaks PS7's `PSModulePath` into child processes; the tool corrects for
+> that, but 5.1 avoids the problem entirely.
+
+A VM is a good test target precisely because most VMs cannot produce a hardware hash, so the
+tool detects that and defaults to **Device Preparation (v2)**, which does not need one.
+
 ## Quick start
 
 Everything is embedded in one file — the window, the theme, and the engine itself. Copy `dist\Get-WindowsAutopilotImportGUICommunity.ps1` to a USB stick and run it:
@@ -149,6 +175,24 @@ The whole session, including full engine output, with the log file path and a co
 .\build.ps1 -SkipTests             # skip the Pester gate
 .\build.ps1 -UpdateVendorManifest  # after refreshing vendor\ from upstream
 ```
+
+### Publishing
+
+```powershell
+# Windows PowerShell 5.1 only: Publish-Script is PowerShellGet v2.
+powershell.exe -File .\publish.ps1 -WhatIf          # validate everything, upload nothing
+powershell.exe -File .\publish.ps1 -ApiKey 'oy2...' # publish
+```
+
+`publish.ps1` refuses to upload unless the build is current: it re-runs the distribution smoke
+test, checks that `dist` is newer than everything in `src\` and `vendor\`, confirms the built
+version matches `$script:ApAppVersion` in the sources, and verifies the version is newer than
+what is already on the Gallery. A published version can only be unlisted, never replaced, so
+these checks run before anything is sent.
+
+To release a new version, bump `$script:ApAppVersion` in
+[src\Public\Show-AutopilotImportGui.ps1](src/Public/Show-AutopilotImportGui.ps1) — the build
+reads it and stamps `PSScriptInfo`, the About card and the sidebar from that one place.
 
 The build inlines both XAML documents and embeds each vendored script as base64 of its **exact bytes** — never re-encoded text — so Andrew Taylor's Authenticode signature survives. The checksum is round-trip verified at build time and again at runtime.
 
