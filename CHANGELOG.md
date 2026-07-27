@@ -37,6 +37,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
   tail only when the view is already at the bottom; scroll up and the position holds, return to
   the bottom and it resumes following.
 
+- **The vertical scrollbar was effectively invisible.** It was there and it worked, but a 6px
+  `#3A3A3A` thumb on the `#121212` output pane, over a transparent trough, is near-black on
+  black — indistinguishable from no scrollbar. Bars are now 14px with a visible `#242424`
+  track, the thumb is `#6A6A6A` (brightening on hover, accent while dragging), and log panes
+  keep the vertical bar on screen permanently instead of `Auto`, which had it appear and vanish
+  as output arrived.
+
 - **The junction of the two scrollbars was a white square.** `ScrollViewer` is not
   hand-templated, and the stock template fills that corner with `SystemColors.ControlBrush`
   (#F0F0F0). The theme now overrides the brush key.

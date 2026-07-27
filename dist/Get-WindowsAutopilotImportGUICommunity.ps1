@@ -59,7 +59,7 @@ Website : https://orr365.tools
 License : MIT
 
 GENERATED FILE. Do not edit by hand: change the sources under src\ and re-run build.ps1.
-Built 2026-07-27 04:15:04 with engine v5.0.16.
+Built 2026-07-27 04:19:41 with engine v5.0.16.
 
 Autopilot engine: get-windowsautopilotinfocommunity.ps1 (c) Andrew S Taylor, MIT, embedded
 unmodified with its Authenticode signature intact.
@@ -1066,7 +1066,11 @@ $script:ApEmbeddedXaml['Dark'] = @'
     <Setter Property="IsReadOnly" Value="True"/>
     <Setter Property="IsReadOnlyCaretVisible" Value="False"/>
     <Setter Property="TextWrapping" Value="NoWrap"/>
-    <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+    <!-- Always show the vertical bar in a log pane. With Auto it is absent until the content
+         happens to overflow, which reads as the pane having no scrollbar at all; a console
+         that gains and loses its scrollbar as output arrives is also a moving target to grab.
+         Horizontal stays Auto: it is only meaningful when a line actually runs off the edge. -->
+    <Setter Property="VerticalScrollBarVisibility" Value="Visible"/>
     <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
     <Setter Property="SelectionBrush" Value="{StaticResource AccentBrush}"/>
     <Setter Property="VerticalContentAlignment" Value="Top"/>
@@ -1324,11 +1328,17 @@ $script:ApEmbeddedXaml['Dark'] = @'
       <Setter.Value>
         <ControlTemplate TargetType="Thumb">
           <!-- Even inset on all four sides so the same thumb reads correctly whether the
-               bar is vertical or horizontal. -->
-          <Border x:Name="Bd" Background="#3A3A3A" CornerRadius="4" Margin="3"/>
+               bar is vertical or horizontal. #3A3A3A on the #121212 output pane was too
+               close to the background to find: a 6px sliver of near-black on black read as
+               "there is no scrollbar at all". Light enough to see at a glance, and it
+               brightens further on hover so the grab target is obvious. -->
+          <Border x:Name="Bd" Background="#6A6A6A" CornerRadius="4" Margin="3"/>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-              <Setter TargetName="Bd" Property="Background" Value="#565656"/>
+              <Setter TargetName="Bd" Property="Background" Value="#8C8C8C"/>
+            </Trigger>
+            <Trigger Property="IsDragging" Value="True">
+              <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentBrush}"/>
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -1341,9 +1351,11 @@ $script:ApEmbeddedXaml['Dark'] = @'
        the Logs pane could scroll down but never sideways, so long engine lines were
        unreachable. See the Style.Triggers block below. -->
   <Style TargetType="ScrollBar">
-    <Setter Property="Background" Value="Transparent"/>
-    <Setter Property="Width" Value="12"/>
-    <Setter Property="MinWidth" Value="12"/>
+    <!-- A visible trough, not Transparent: it tells you the pane scrolls before you find the
+         thumb, and gives the thumb something to read against. -->
+    <Setter Property="Background" Value="#242424"/>
+    <Setter Property="Width" Value="14"/>
+    <Setter Property="MinWidth" Value="14"/>
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="ScrollBar">
@@ -1377,8 +1389,8 @@ $script:ApEmbeddedXaml['Dark'] = @'
       <Trigger Property="Orientation" Value="Horizontal">
         <Setter Property="Width" Value="Auto"/>
         <Setter Property="MinWidth" Value="0"/>
-        <Setter Property="Height" Value="12"/>
-        <Setter Property="MinHeight" Value="12"/>
+        <Setter Property="Height" Value="14"/>
+        <Setter Property="MinHeight" Value="14"/>
       </Trigger>
     </Style.Triggers>
   </Style>
