@@ -77,8 +77,8 @@ Does not work in **WinPE** (no WPF). It does work in full Windows **OOBE** via <
 
 ## Install from the PowerShell Gallery
 
-[![PowerShell Gallery](https://img.shields.io/powershellgallery/v/Get-WindowsAutopilotImportGUICommunity?label=PowerShell%20Gallery)](https://www.powershellgallery.com/packages/Get-WindowsAutopilotImportGUICommunity)
-[![Downloads](https://img.shields.io/powershellgallery/dt/Get-WindowsAutopilotImportGUICommunity?label=downloads)](https://www.powershellgallery.com/packages/Get-WindowsAutopilotImportGUICommunity)
+[![PowerShell Gallery](https://img.shields.io/powershellgallery/v/Get-WindowsAutopilotImportGUICommunity?label=PowerShell%20Gallery&cacheSeconds=1800)](https://www.powershellgallery.com/packages/Get-WindowsAutopilotImportGUICommunity)
+[![Downloads](https://img.shields.io/powershellgallery/dt/Get-WindowsAutopilotImportGUICommunity?label=downloads&cacheSeconds=1800)](https://www.powershellgallery.com/packages/Get-WindowsAutopilotImportGUICommunity)
 
 ```powershell
 Install-Script -Name Get-WindowsAutopilotImportGUICommunity -Scope AllUsers -Force
