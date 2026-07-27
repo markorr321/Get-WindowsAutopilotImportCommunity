@@ -119,6 +119,65 @@ foreach ($required in @('RegisterButton', 'GroupTagCombo', 'ModeV1', 'ModeV2', '
     Check "control '$required' present" ($ui.Elements.ContainsKey($required))
 }
 
+# ---- themed text inputs actually render ----
+# The theme hand-templates TextBox, and its content host is where the control's Padding gets
+# applied. Binding Padding to the host's Margin as well double-counted it: a 38-high field
+# kept 4px for an 18.6px glyph run, so every plain TextBox held its value and painted nothing
+# while the group-tag ComboBox (Padding="10,0") looked fine. Nothing about that is visible in
+# a parse check, so assert the line box each field gets is tall enough for its own font.
+Write-Host "`n== themed text inputs =="
+$probeWin = $ui.Window
+$probeWin.Left = -4000; $probeWin.Top = -4000; $probeWin.ShowInTaskbar = $false
+$probeWin.Show()
+try {
+    foreach ($page in 'PageRegister', 'PageDevice', 'PageBatch', 'PageNetwork', 'PageAdvanced', 'PageLogs') {
+        if ($ui.Elements.ContainsKey($page)) { $ui.Elements[$page].Visibility = 'Visible' }
+    }
+    $probeWin.UpdateLayout()
+
+    function Get-ApVisualDescendant {
+        param($Element, [string]$TypeName)
+        $found = New-Object System.Collections.Generic.List[object]
+        $queue = New-Object System.Collections.Generic.Queue[object]
+        $queue.Enqueue($Element)
+        while ($queue.Count -gt 0) {
+            $node = $queue.Dequeue()
+            if ($node.GetType().Name -eq $TypeName) { $found.Add($node) }
+            for ($i = 0; $i -lt [System.Windows.Media.VisualTreeHelper]::GetChildrenCount($node); $i++) {
+                $queue.Enqueue([System.Windows.Media.VisualTreeHelper]::GetChild($node, $i))
+            }
+        }
+        return $found
+    }
+
+    $boxes = @(Get-ApVisualDescendant -Element $probeWin -TypeName 'TextBox' |
+                Where-Object { $_.IsVisible -and -not $_.IsReadOnly })
+    Check 'themed TextBoxes found to measure' ($boxes.Count -ge 4) "count $($boxes.Count)"
+
+    $tooShort = New-Object System.Collections.Generic.List[string]
+    foreach ($box in $boxes) {
+        $box.Text = 'Wg'
+    }
+    $probeWin.UpdateLayout()
+
+    foreach ($box in $boxes) {
+        $view = @(Get-ApVisualDescendant -Element $box -TypeName 'TextBoxView')
+        $name = if ($box.Name) { $box.Name } else { '<unnamed>' }
+        if ($view.Count -eq 0) {
+            $tooShort.Add("$name has no TextBoxView")
+            continue
+        }
+        # A glyph run needs at least the em size; anything less and the text is invisible.
+        if ($view[0].ActualHeight -lt $box.FontSize) {
+            $tooShort.Add(('{0} line box {1:N1}px < FontSize {2}' -f $name, $view[0].ActualHeight, $box.FontSize))
+        }
+    }
+    Check 'every editable TextBox gets a line box >= its FontSize' ($tooShort.Count -eq 0) ($tooShort -join '; ')
+}
+finally {
+    $probeWin.Close()
+}
+
 # ---- argument building ----
 Write-Host "`n== argument building =="
 $req = New-ApRegistrationRequest

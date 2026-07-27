@@ -3,6 +3,28 @@
 All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/).
 
+## [1.2.1] - 2026-07-27
+
+### Fixed
+
+- **Text typed into the registration fields was invisible.** Assigned user, computer name, add
+  to Entra group, the batch import CSV path and the Advanced product key all accepted input,
+  kept it, and passed it to the engine — but painted nothing on screen. Most visible in
+  Autopilot v1, because v2 hides that whole card.
+
+  The theme hand-templates `TextBox` and bound the control's `Padding` to the content host's
+  `Margin`. WPF's text host applies `TextBox.Padding` itself, as the stock template relies on,
+  so the inset landed twice: a 38px-high field lost 16px to the margin and another 16px
+  internally, leaving a 4px line box that an 18.6px glyph run could not render into. The caret
+  still blinked, which is why the fields looked merely empty rather than broken. The group tag
+  was unaffected only because `DarkComboBox` uses `Padding="10,0"` and so lost nothing
+  vertically. Present since 1.0.0.
+
+  Fixed by dropping the `Margin` binding, matching the stock WPF template. The distribution
+  harness now measures the line box of every editable `TextBox` on every page and fails if one
+  is shorter than its own font size — the condition is invisible to a parse check, and this
+  guard reproduces the bug on the pre-fix build.
+
 ## [1.2.0] - 2026-07-27
 
 ### Added

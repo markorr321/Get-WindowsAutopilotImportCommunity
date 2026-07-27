@@ -16,7 +16,7 @@ $script:ApGraphCheck = $null
 # run completes successfully.
 $script:ApPendingV2Reboot = $false
 $script:ApEnginePath = $null
-$script:ApAppVersion = '1.2.0'
+$script:ApAppVersion = '1.2.1'
 $script:ApAuthor = 'Mark Orr'
 $script:ApAuthorHandle = '@markorr321'
 $script:ApAuthorSite = 'https://orr365.tools'

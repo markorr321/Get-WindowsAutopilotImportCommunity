@@ -1,5 +1,5 @@
 ﻿<#PSScriptInfo
-.VERSION 1.2.0
+.VERSION 1.2.1
 .GUID 6f2b9c14-8d3e-4a71-9c5f-1b0e7a4d2c98
 .AUTHOR Mark Orr
 .COMPANYNAME orr365.tools
@@ -8,7 +8,7 @@
 .LICENSEURI https://github.com/markorr321/Get-WindowsAutopilotImportCommunity/blob/main/LICENSE
 .PROJECTURI https://github.com/markorr321/Get-WindowsAutopilotImportCommunity
 .RELEASENOTES
-1.2.0 Single-file build. Autopilot v1 and v2 (Device Preparation) support.
+1.2.1 Single-file build. Autopilot v1 and v2 (Device Preparation) support.
 #>
 
 <#
@@ -59,7 +59,7 @@ Website : https://orr365.tools
 License : MIT
 
 GENERATED FILE. Do not edit by hand: change the sources under src\ and re-run build.ps1.
-Built 2026-07-27 03:22:53 with engine v5.0.16.
+Built 2026-07-27 04:03:22 with engine v5.0.16.
 
 Autopilot engine: get-windowsautopilotinfocommunity.ps1 (c) Andrew S Taylor, MIT, embedded
 unmodified with its Authenticode signature intact.
@@ -1018,7 +1018,14 @@ $script:ApEmbeddedXaml['Dark'] = @'
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
                   CornerRadius="6" SnapsToDevicePixels="True">
-            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"
+            <!-- Padding is deliberately NOT bound to this ScrollViewer's Margin. The text
+                 host applies TextBox.Padding itself, exactly as the stock WPF template
+                 relies on, so binding it here applied the inset twice: a 38-high box lost
+                 16px to the margin and another 16px internally, leaving a 4px line box that
+                 an 18.6px glyph run could not render into. The field kept its value and the
+                 caret blinked, but nothing was ever painted, and only for the plain
+                 TextBoxes: DarkComboBox uses Padding="10,0" and so lost nothing vertically. -->
+            <ScrollViewer x:Name="PART_ContentHost"
                           VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                           Focusable="False"/>
           </Border>
@@ -7018,7 +7025,7 @@ $script:ApGraphCheck = $null
 # run completes successfully.
 $script:ApPendingV2Reboot = $false
 $script:ApEnginePath = $null
-$script:ApAppVersion = '1.2.0'
+$script:ApAppVersion = '1.2.1'
 $script:ApAuthor = 'Mark Orr'
 $script:ApAuthorHandle = '@markorr321'
 $script:ApAuthorSite = 'https://orr365.tools'

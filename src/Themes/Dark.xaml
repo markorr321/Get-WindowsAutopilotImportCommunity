@@ -293,7 +293,14 @@
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
                   CornerRadius="6" SnapsToDevicePixels="True">
-            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"
+            <!-- Padding is deliberately NOT bound to this ScrollViewer's Margin. The text
+                 host applies TextBox.Padding itself, exactly as the stock WPF template
+                 relies on, so binding it here applied the inset twice: a 38-high box lost
+                 16px to the margin and another 16px internally, leaving a 4px line box that
+                 an 18.6px glyph run could not render into. The field kept its value and the
+                 caret blinked, but nothing was ever painted, and only for the plain
+                 TextBoxes: DarkComboBox uses Padding="10,0" and so lost nothing vertically. -->
+            <ScrollViewer x:Name="PART_ContentHost"
                           VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                           Focusable="False"/>
           </Border>
