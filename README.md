@@ -150,17 +150,21 @@ Full inventory, plus offline export that never touches your tenant: hardware has
 ### Network check
 Probes the documented Autopilot, Intune, Entra, TPM attestation, activation and update endpoints on TCP 443, concurrently. Failures sort to the top; required failures are red, optional ones amber.
 
-![Network check](assets/05-network.png)
+![Network check](assets/04-network.png)
 
 ### Advanced
 Post-assignment actions (pre-provisioning, sysprep, wipe, product key), Autopilot diagnostics, Windows Update, engine integrity verification, and a toggle to show the engine console.
 
 Diagnostics reads this machine's ESP and enrolment state from the local event logs and registry. Tick **Resolve app and policy names from Intune** to add the script's `-Online` lookup, which signs in to Graph read-only (`DeviceManagementApps.Read.All`, `DeviceManagementConfiguration.Read.All`) and turns app, policy and script GUIDs into display names. It is off by default so the local read stays usable in OOBE, with no sign-in module and no browser prompt; the choice is remembered.
 
-![Advanced page](assets/06-advanced.png)
+![Advanced page](assets/05-advanced.png)
 
 ### Logs
-The whole session, including full engine output, with the log file path and a copy button.
+The whole session, including the full output of each engine run, with the log file path and a copy button. Engine output is rendered through the formatter, so tabular sections such as the diagnostics **observed timeline** arrive as readable tables rather than object type names, and each run also writes a standalone log file whose path is reported at the end.
+
+A finished run stays on screen until you press **Refresh**, and both scrollbars work, so a long report can actually be read.
+
+![Logs page](assets/06-logs.png)
 
 ---
 

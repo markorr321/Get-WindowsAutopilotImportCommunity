@@ -263,7 +263,11 @@ if (`$env:PSModulePath) {
 
 function Write-RunLine {
     param([string]`$Text)
-    `$logWriter.WriteLine(`$Text)
+    # The diagnostics script colours its status column with raw ANSI escapes (Write-Host
+    # -ForegroundColor is fine, but it also emits VT sequences of its own). Neither a WPF
+    # TextBox nor a log file interprets those, so they showed up verbatim as
+    # "[93mSCP discovery successful[0m" once the formatter started rendering the table.
+    `$logWriter.WriteLine((`$Text -replace ([char]27 + '\[[0-9;]*[A-Za-z]'), ''))
 }
 
 # Environment banner. When a run fails on someone else's bench this log is the only
@@ -297,7 +301,16 @@ else {
     try {
         # *>&1 folds every stream (including Write-Host's information stream) into the
         # success stream so the GUI sees the engine's full narration.
-        & `$engine @params *>&1 | ForEach-Object { Write-RunLine ("`$_" ) }
+        #
+        # Out-String -Stream rather than "`$_": the diagnostics script renders its observed
+        # timeline with Format-Table, and casting those format records to string printed the
+        # type names -- 35 consecutive lines of
+        # "Microsoft.PowerShell.Commands.Internal.Format.FormatEntryData" -- in place of the
+        # ESP phase table, which is the most useful part of the report. Out-String runs the
+        # formatter properly; -Stream keeps it line-by-line so the tail reader still sees
+        # output as it arrives, and -Width 200 stops the hidden console's narrow default
+        # from truncating the table's columns.
+        & `$engine @params *>&1 | Out-String -Stream -Width 200 | ForEach-Object { Write-RunLine `$_ }
     }
     catch {
         Write-RunLine ("ERROR: " + `$_.Exception.Message)

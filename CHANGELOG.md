@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [1.3.0] - 2026-07-27
 
+### Fixed
+
+- **Tabular engine output arrived as object type names.** The diagnostics report renders its
+  observed timeline with `Format-Table`, and the launcher piped the engine straight into
+  `ForEach-Object { "$_" }`. Casting a format record to a string yields its class name, so the
+  ESP phase timeline — the most useful part of the report — appeared as 35 consecutive lines of
+  `Microsoft.PowerShell.Commands.Internal.Format.FormatEntryData`. Output now goes through
+  `Out-String -Stream -Width 200`, which runs the formatter properly while still emitting line
+  by line for the live tail. On a test machine this turned a 3,553-character report into a
+  5,195-character one containing an actual `Date / Status / Detail` table.
+
+- **Raw ANSI escape sequences appeared in the output.** The diagnostics script colours its
+  status column with VT sequences, which surfaced as literal
+  `[93mSCP discovery successful[0m` once the formatter began rendering the table. Neither a WPF
+  TextBox nor a log file interprets those, so they are now stripped as each line is written —
+  in the run log on disk as well as on screen.
+
 ### Removed
 
 - **The Batch import page.** It could not work as advertised, and half of it could never work
