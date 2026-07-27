@@ -15,8 +15,12 @@ $script:ApGraphCheck = $null
 # Set when a v2 register run is launched with the restart option ticked; consumed once the
 # run completes successfully.
 $script:ApPendingV2Reboot = $false
+# The Logs pane has two possible owners: the GUI's own session log, and the streamed output of
+# a run launched from the Advanced page (diagnostics). Tracking which one is on screen stops
+# the session log from overwriting a report the operator is still reading.
+$script:ApLogsShowingRun = $false
 $script:ApEnginePath = $null
-$script:ApAppVersion = '1.2.1'
+$script:ApAppVersion = '1.2.2'
 $script:ApAuthor = 'Mark Orr'
 $script:ApAuthorHandle = '@markorr321'
 $script:ApAuthorSite = 'https://orr365.tools'
@@ -555,6 +559,9 @@ function Start-ApGuiRun {
     }
 
     $script:ApActiveOutput = $OutputBox
+    # A run that streams into the Logs pane owns it until the operator asks for the session
+    # log back, otherwise finishing the run would wipe its own output.
+    $script:ApLogsShowingRun = [bool]($OutputBox -eq $script:ApEl.LogsOutput)
     $OutputBox.Clear()
     Add-ApOutput -Box $OutputBox -Lines @($StartMessage)
 
@@ -617,10 +624,20 @@ function Invoke-ApRunTick {
     $failed = $run.Cancelled -or $state.IsError -or ($run.ExitCode -ne 0)
 
     Set-ApStatus -Text $summary -Stage $state.Stage -Percent ($(if ($failed) { $state.Percent } else { 100 })) -IsError:$failed
-    Add-ApOutput -Box $script:ApActiveOutput -Lines @('', $summary)
+    Add-ApOutput -Box $script:ApActiveOutput -Lines @('', $summary, "[GUI] Full output saved to $($run.LogPath)")
     Write-ApLog "Run summary: $summary" -Level $(if ($failed) { 'WARN' } else { 'INFO' })
 
+    # Refreshes the log path caption. It deliberately leaves a run report on screen; see
+    # Update-ApLogsPage for why that mattered.
     Update-ApLogsPage
+
+    # A finished report is read from the top, but streaming left the view pinned to the tail.
+    # Only for runs that own the Logs pane: a registration ends with its outcome, so there the
+    # last line is the one worth looking at.
+    if ($script:ApLogsShowingRun -and $script:ApActiveOutput) {
+        $script:ApActiveOutput.CaretIndex = 0
+        $script:ApActiveOutput.ScrollToHome()
+    }
 
     # Device Preparation restart. Only on a clean run: never reboot after a failure or a
     # cancel, or the operator loses the log and the device leaves OOBE unregistered.
@@ -696,13 +713,31 @@ function Stop-ApGuiRun {
 # ============================ logs page ============================
 
 function Update-ApLogsPage {
+    <#
+    .SYNOPSIS
+    Shows the GUI session log in the Logs pane.
+
+    .DESCRIPTION
+    Refuses to overwrite streamed run output unless asked to. A diagnostics run streams into
+    this same pane, and this function used to be called unconditionally when any run finished:
+    the report was replaced by a handful of session-log lines the instant it completed, which
+    looked like the results -- and the scrollbar with them -- simply vanishing.
+
+    .PARAMETER Force
+    Replace the pane even when it is showing run output. This is what the Refresh button does,
+    because asking for the session log explicitly is unambiguous.
+    #>
     [CmdletBinding()]
-    param()
+    param([switch]$Force)
+
+    $script:ApEl.LogsPathText.Text = Get-ApLogPath
+
+    if ($script:ApLogsShowingRun -and -not $Force) { return }
+    $script:ApLogsShowingRun = $false
 
     $lines = Get-ApLogBuffer
     $script:ApEl.LogsOutput.Text = ($lines -join [Environment]::NewLine)
     $script:ApEl.LogsOutput.ScrollToEnd()
-    $script:ApEl.LogsPathText.Text = Get-ApLogPath
 }
 
 # ============================ network page ============================
@@ -1294,7 +1329,9 @@ function Initialize-ApGui {
     Sync-ApAdvancedWarnings
 
     # ---------- logs page ----------
-    $el.LogsRefreshButton.Add_Click({ Update-ApLogsPage })
+    # -Force: clicking Refresh is an explicit request for the session log, even if a run
+    # report is currently on screen. The run's own log file on disk is unaffected.
+    $el.LogsRefreshButton.Add_Click({ Update-ApLogsPage -Force })
 
     $el.LogsCopyButton.Add_Click({
         try {

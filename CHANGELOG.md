@@ -3,6 +3,27 @@
 All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/).
 
+## [1.2.2] - 2026-07-27
+
+### Fixed
+
+- **Autopilot diagnostics results vanished the moment the run finished.** The report streamed
+  into the Logs pane correctly, then disappeared and left a pane with nothing in it — no
+  content, and therefore no scrollbar — so the results could never actually be read.
+
+  `Update-ApLogsPage` replaces that pane with the GUI's own session log, and it was called
+  unconditionally whenever *any* run completed. For a diagnostics run, whose output box **is**
+  the Logs pane, that overwrote a 40,000-character report with a few dozen lines of session
+  log. Navigating away from Logs and back did it again, via the nav handler.
+
+  The pane now tracks which of its two owners is on screen. A run that streams there keeps it
+  until the operator clicks **Refresh**, which is an explicit request for the session log.
+  Reaching the end of a run no longer discards what the run produced.
+
+- A finished diagnostics report now scrolls back to the **top** rather than staying pinned to
+  the tail where streaming left it, and the run's log-file path is appended to the output, so
+  the full report is findable on disk regardless.
+
 ## [1.2.1] - 2026-07-27
 
 ### Fixed

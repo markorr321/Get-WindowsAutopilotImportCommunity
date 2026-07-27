@@ -207,6 +207,26 @@ try {
         $_.Fill.Color.R -gt 100 -and $_.Fill.Color.G -gt 100 -and $_.Fill.Color.B -gt 100 })
     Check 'scrollbar corner is themed, not system white' ($paleCorner.Count -eq 0) `
         (($paleCorner | ForEach-Object { "$($_.Fill)" }) -join ', ')
+
+    # ---- the Logs pane must not eat a run report ----
+    # A diagnostics run streams into this same pane, and Update-ApLogsPage was called
+    # unconditionally when any run finished: the report vanished the moment it completed,
+    # taking the scrollbar with it, so the results could never be read.
+    $script:ApEl = $ui.Elements
+    Write-ApLog 'harness probe line for the logs pane'
+    $script:ApLogsShowingRun = $false
+    Update-ApLogsPage
+    $sessionLog = $logs.Text
+    Check 'logs pane shows the session log by default' ($sessionLog -match 'harness probe line')
+
+    $script:ApLogsShowingRun = $true
+    $logs.Text = 'DIAGNOSTICS REPORT — must survive the run finishing'
+    Update-ApLogsPage
+    Check 'a finished run keeps its report on screen' ($logs.Text -match 'DIAGNOSTICS REPORT') `
+        "pane now holds: $($logs.Text.Substring(0, [Math]::Min(60, $logs.Text.Length)))"
+
+    Update-ApLogsPage -Force
+    Check 'Refresh still restores the session log' ($logs.Text -match 'harness probe line')
 }
 finally {
     $probeWin.Close()
