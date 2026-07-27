@@ -20,7 +20,7 @@ It is a ground-up rewrite of [ugurkocde/AutoPilot_Import_GUI](https://github.com
 | Network check | Present but **never worked** — every probe called `Write-Output -ForegroundColor`, which is not a valid parameter, so all 29 checks threw and the errors were swallowed by `SilentlyContinue` | Rewritten: 26 endpoints probed concurrently in ~0.4 s, colour-coded results grid, latency, required vs optional |
 | Group tag | Free-text box, retyped every time | Editable dropdown with remembered history |
 | Already-registered device | Not handled — the engine's `Read-Host` prompt would hang behind the console | Explicit choice: update tag / delete and re-add / assume new |
-| Also supports | — | Assigned user, computer name, Entra group membership, batch CSV import, offline export, wipe, sysprep, pre-provisioning, product key change, Autopilot diagnostics |
+| Also supports | — | Assigned user, computer name, Entra group membership, batch CSV import, offline export, wipe, sysprep, pre-provisioning, product key change, Autopilot diagnostics (local, or with Intune name resolution) |
 | Logging | `C:\Autopilot_Import_GUI_log.txt` | `%ProgramData%\AutopilotImportGUI\Logs\` with an in-app Logs page |
 | Windows Update | Downloads the `PSWindowsUpdate` module from PSGallery | Uses the in-box Windows Update agent, so it works on a restricted OOBE network |
 
@@ -62,6 +62,13 @@ DeviceManagementServiceConfig.ReadWrite.All
 DeviceManagementScripts.ReadWrite.All
 Group.ReadWrite.All            (only when adding to an Entra group)
 GroupMember.ReadWrite.All      (only when adding to an Entra group)
+```
+
+Diagnostics run entirely locally by default. Only if you tick **Resolve app and policy names from Intune** does that page sign in, and then read-only:
+
+```
+DeviceManagementApps.Read.All
+DeviceManagementConfiguration.Read.All
 ```
 
 Does not work in **WinPE** (no WPF). It does work in full Windows **OOBE** via <kbd>Shift</kbd>+<kbd>F10</kbd>.
@@ -151,6 +158,8 @@ Probes the documented Autopilot, Intune, Entra, TPM attestation, activation and 
 ### Advanced
 Post-assignment actions (pre-provisioning, sysprep, wipe, product key), Autopilot diagnostics, Windows Update, engine integrity verification, and a toggle to show the engine console.
 
+Diagnostics reads this machine's ESP and enrolment state from the local event logs and registry. Tick **Resolve app and policy names from Intune** to add the script's `-Online` lookup, which signs in to Graph read-only (`DeviceManagementApps.Read.All`, `DeviceManagementConfiguration.Read.All`) and turns app, policy and script GUIDs into display names. It is off by default so the local read stays usable in OOBE, with no sign-in module and no browser prompt; the choice is remembered.
+
 ![Advanced page](assets/06-advanced.png)
 
 ### Logs
@@ -170,11 +179,12 @@ The whole session, including full engine output, with the log file path and a co
   "rebootWhenAssigned": true,
   "existingDevicePolicy": "update",
   "showConsoleWindow": false,
+  "diagnosticsOnline": false,
   "connectivityEndpoints": null
 }
 ```
 
-`existingDevicePolicy` is `update`, `delete` or `skipcheck`. Set `connectivityEndpoints` to an array of `{ Category, Name, Host, Port, Required }` to replace the built-in endpoint list.
+`existingDevicePolicy` is `update`, `delete` or `skipcheck`. Set `connectivityEndpoints` to an array of `{ Category, Name, Host, Port, Required }` to replace the built-in endpoint list. Set `diagnosticsOnline` to `true` to have the Advanced page's diagnostics run default to `-Online`.
 
 ---
 

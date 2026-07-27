@@ -1,5 +1,5 @@
 ﻿<#PSScriptInfo
-.VERSION 1.1.0
+.VERSION 1.2.0
 .GUID 6f2b9c14-8d3e-4a71-9c5f-1b0e7a4d2c98
 .AUTHOR Mark Orr
 .COMPANYNAME orr365.tools
@@ -8,7 +8,7 @@
 .LICENSEURI https://github.com/markorr321/Get-WindowsAutopilotImportCommunity/blob/main/LICENSE
 .PROJECTURI https://github.com/markorr321/Get-WindowsAutopilotImportCommunity
 .RELEASENOTES
-1.1.0 Single-file build. Autopilot v1 and v2 (Device Preparation) support.
+1.2.0 Single-file build. Autopilot v1 and v2 (Device Preparation) support.
 #>
 
 <#
@@ -59,7 +59,7 @@ Website : https://orr365.tools
 License : MIT
 
 GENERATED FILE. Do not edit by hand: change the sources under src\ and re-run build.ps1.
-Built 2026-07-26 06:31:13 with engine v5.0.16.
+Built 2026-07-27 03:22:53 with engine v5.0.16.
 
 Autopilot engine: get-windowsautopilotinfocommunity.ps1 (c) Andrew S Taylor, MIT, embedded
 unmodified with its Authenticode signature intact.
@@ -604,7 +604,9 @@ $script:ApEmbeddedXaml['MainWindow'] = @'
                   <StackPanel>
                     <TextBlock Style="{StaticResource CardTitle}" Text="Tools"/>
                     <Button x:Name="AdvDiagnosticsButton" Style="{StaticResource SecondaryButton}" Content="Run Autopilot diagnostics" HorizontalAlignment="Left" Margin="0,0,0,8"/>
-                    <TextBlock Style="{StaticResource HintText}" Margin="2,0,0,12" Text="Reads this machine's Autopilot and enrolment state from the local event logs and registry."/>
+                    <TextBlock Style="{StaticResource HintText}" Margin="2,0,0,8" Text="Reads this machine's Autopilot and enrolment state from the local event logs and registry."/>
+                    <CheckBox x:Name="AdvDiagnosticsOnlineCheck" Content="Resolve app and policy names from Intune (-Online)"/>
+                    <TextBlock Style="{StaticResource HintText}" Margin="28,2,0,12" Text="Without this, apps and policies appear as GUIDs. With it the run signs in to Graph read-only, so it needs the sign-in module, network access and a browser prompt."/>
                     <Button x:Name="AdvWindowsUpdateButton" Style="{StaticResource SecondaryButton}" Content="Install Windows updates" HorizontalAlignment="Left" Margin="0,0,0,8"/>
                     <TextBlock Style="{StaticResource HintText}" Margin="2,0,0,0" Text="Uses the in-box Windows Update agent, so no module download is needed. Runs in its own window because the device may restart."/>
                   </StackPanel>
@@ -3986,6 +3988,11 @@ function Get-ApDefaultConfig {
         # the whole point of this rewrite is that output lands in the GUI.
         showConsoleWindow     = $false
 
+        # Run the diagnostics script with -Online, which resolves app and policy GUIDs to
+        # display names via Graph. Off by default: the local read is the common case and
+        # needs neither the sign-in module nor a browser, which matters in OOBE.
+        diagnosticsOnline     = $false
+
         # $null = use the built-in list from Get-ApDefaultEndpoints.
         connectivityEndpoints = $null
 
@@ -7011,7 +7018,7 @@ $script:ApGraphCheck = $null
 # run completes successfully.
 $script:ApPendingV2Reboot = $false
 $script:ApEnginePath = $null
-$script:ApAppVersion = '1.1.0'
+$script:ApAppVersion = '1.2.0'
 $script:ApAuthor = 'Mark Orr'
 $script:ApAuthorHandle = '@markorr321'
 $script:ApAuthorSite = 'https://orr365.tools'
@@ -7487,6 +7494,7 @@ function Set-ApRunningState {
     $el.BatchRunButton.IsEnabled = -not $IsRunning
     $el.BatchPreviewButton.IsEnabled = -not $IsRunning
     $el.AdvDiagnosticsButton.IsEnabled = -not $IsRunning
+    $el.AdvDiagnosticsOnlineCheck.IsEnabled = -not $IsRunning
     $el.AdvWindowsUpdateButton.IsEnabled = -not $IsRunning
     $el.ExportHashButton.IsEnabled = -not $IsRunning
     $el.ExportIdentifierButton.IsEnabled = -not $IsRunning
@@ -7901,6 +7909,7 @@ function Initialize-ApGui {
     $el.RebootCheck.IsChecked = [bool]$config.rebootWhenAssigned
     $el.RebootV2Check.IsChecked = [bool]$config.rebootAfterV2Import
     $el.AdvShowConsoleCheck.IsChecked = [bool]$config.showConsoleWindow
+    $el.AdvDiagnosticsOnlineCheck.IsChecked = [bool]$config.diagnosticsOnline
 
     switch ("$($config.existingDevicePolicy)") {
         'delete'    { $el.PolicyDelete.IsChecked = $true }
@@ -8169,6 +8178,11 @@ function Initialize-ApGui {
         Save-ApConfig | Out-Null
     })
 
+    $el.AdvDiagnosticsOnlineCheck.Add_Click({
+        Set-ApConfigValue 'diagnosticsOnline' ([bool]$script:ApEl.AdvDiagnosticsOnlineCheck.IsChecked)
+        Save-ApConfig | Out-Null
+    })
+
     $el.AdvVerifyEngineButton.Add_Click({
         $el = $script:ApEl
         if (-not $script:ApEnginePath) {
@@ -8222,11 +8236,36 @@ function Initialize-ApGui {
             return
         }
 
+        # -Online only adds lookups: app, policy and script GUIDs from the local logs are
+        # resolved to display names through Graph. Everything the script reports is still
+        # read from this machine, and nothing is written either way.
+        $online = [bool]$script:ApEl.AdvDiagnosticsOnlineCheck.IsChecked
+
+        # Same trap as a registration run: a broken sign-in module aborts the engine before
+        # any browser prompt appears, which reads as "nothing happened".
+        if ($online -and $script:ApGraphCheck -and -not $script:ApGraphCheck.Available -and
+            $script:ApGraphCheck.InstalledVersions.Count -gt 0) {
+            $proceed = Show-ApDialog -Title 'Sign-in will probably fail' -Owner $script:ApWin -ShowCancel `
+                -ConfirmText 'Try anyway' `
+                -Message ('The Microsoft Graph sign-in module is installed but cannot be loaded, so the online lookup will stop before a sign-in prompt appears. ' +
+                          'Clear the -Online option to run the local diagnostics anyway, or use "Repair sign-in module".') `
+                -Detail (Get-ApGraphModuleAdvice -Check $script:ApGraphCheck)
+            if (-not $proceed) { return }
+        }
+
+        # An 'Online' key is also what makes the launcher install the sign-in prerequisites
+        # non-interactively (see Get-ApDependencyPrepBlock); a local run must not touch the gallery.
+        $params = [ordered]@{}
+        $message = 'Collecting Autopilot diagnostics...'
+        if ($online) {
+            $params['Online'] = $true
+            $message = 'Collecting Autopilot diagnostics and signing in to resolve app and policy names...'
+        }
+
         $script:ApEl.NavLogs.IsChecked = $true
-        # The diagnostics script is read-only and needs no parameters.
-        Start-ApGuiRun -Parameters ([ordered]@{}) -OutputBox $script:ApEl.LogsOutput `
+        Start-ApGuiRun -Parameters $params -OutputBox $script:ApEl.LogsOutput `
                        -EnginePath $diag -Label 'diagnostics' `
-                       -StartMessage 'Collecting Autopilot diagnostics...'
+                       -StartMessage $message
     })
 
     $el.AdvWindowsUpdateButton.Add_Click({

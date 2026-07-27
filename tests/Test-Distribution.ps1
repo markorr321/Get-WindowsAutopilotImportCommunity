@@ -115,7 +115,7 @@ Write-Host "`n== window =="
 $ui = New-ApMainWindow
 Check 'window builds from embedded XAML' ($null -ne $ui.Window)
 Check 'named controls resolved' ($ui.Elements.Count -ge 90) "count $($ui.Elements.Count)"
-foreach ($required in @('RegisterButton', 'GroupTagCombo', 'ModeV1', 'ModeV2', 'NetworkGrid', 'DeviceGrid', 'StatusProgress', 'RegisterOutput')) {
+foreach ($required in @('RegisterButton', 'GroupTagCombo', 'ModeV1', 'ModeV2', 'NetworkGrid', 'DeviceGrid', 'StatusProgress', 'RegisterOutput', 'AdvDiagnosticsButton', 'AdvDiagnosticsOnlineCheck')) {
     Check "control '$required' present" ($ui.Elements.ContainsKey($required))
 }
 
@@ -132,6 +132,30 @@ $req2 = New-ApRegistrationRequest
 $req2.Mode = 'v2'
 $p2 = (Build-ApEngineArguments $req2).Parameters
 Check 'v2 emits -identifier only' ($p2['identifier'] -and -not $p2.Contains('GroupTag'))
+
+# ---- diagnostics launcher ----
+# The Advanced page decides between a local read and a Graph lookup purely by whether it puts
+# an 'Online' key in the parameter hashtable, which is also what gates the sign-in prep block.
+Write-Host "`n== diagnostics launcher =="
+$diagTmp = Join-Path ([System.IO.Path]::GetTempPath()) ('ap-diag-{0}' -f ([guid]::NewGuid().ToString('N')))
+New-Item -ItemType Directory -Path $diagTmp -Force | Out-Null
+try {
+    $launcher = Join-Path $diagTmp 'launcher.ps1'
+
+    New-ApLauncherScript -EnginePath $diag -Parameters ([ordered]@{ Online = $true }) `
+                         -LogPath (Join-Path $diagTmp 'run.log') -LauncherPath $launcher | Out-Null
+    $onlineText = Get-Content -LiteralPath $launcher -Raw
+    Check 'online diagnostics splats -Online' ($onlineText -match 'Online\s*=\s*\$true')
+    Check 'online diagnostics prepares the sign-in module' ($onlineText -match 'Microsoft\.Graph\.Authentication')
+
+    New-ApLauncherScript -EnginePath $diag -Parameters ([ordered]@{}) `
+                         -LogPath (Join-Path $diagTmp 'run.log') -LauncherPath $launcher | Out-Null
+    $localText = Get-Content -LiteralPath $launcher -Raw
+    Check 'local diagnostics never touches the gallery' ($localText -notmatch 'Install-Module')
+}
+finally {
+    Remove-Item -LiteralPath $diagTmp -Recurse -Force -ErrorAction SilentlyContinue
+}
 
 # ---- device info ----
 Write-Host "`n== device =="

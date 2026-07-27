@@ -16,7 +16,7 @@ $script:ApGraphCheck = $null
 # run completes successfully.
 $script:ApPendingV2Reboot = $false
 $script:ApEnginePath = $null
-$script:ApAppVersion = '1.1.0'
+$script:ApAppVersion = '1.2.0'
 $script:ApAuthor = 'Mark Orr'
 $script:ApAuthorHandle = '@markorr321'
 $script:ApAuthorSite = 'https://orr365.tools'
@@ -492,6 +492,7 @@ function Set-ApRunningState {
     $el.BatchRunButton.IsEnabled = -not $IsRunning
     $el.BatchPreviewButton.IsEnabled = -not $IsRunning
     $el.AdvDiagnosticsButton.IsEnabled = -not $IsRunning
+    $el.AdvDiagnosticsOnlineCheck.IsEnabled = -not $IsRunning
     $el.AdvWindowsUpdateButton.IsEnabled = -not $IsRunning
     $el.ExportHashButton.IsEnabled = -not $IsRunning
     $el.ExportIdentifierButton.IsEnabled = -not $IsRunning
@@ -906,6 +907,7 @@ function Initialize-ApGui {
     $el.RebootCheck.IsChecked = [bool]$config.rebootWhenAssigned
     $el.RebootV2Check.IsChecked = [bool]$config.rebootAfterV2Import
     $el.AdvShowConsoleCheck.IsChecked = [bool]$config.showConsoleWindow
+    $el.AdvDiagnosticsOnlineCheck.IsChecked = [bool]$config.diagnosticsOnline
 
     switch ("$($config.existingDevicePolicy)") {
         'delete'    { $el.PolicyDelete.IsChecked = $true }
@@ -1174,6 +1176,11 @@ function Initialize-ApGui {
         Save-ApConfig | Out-Null
     })
 
+    $el.AdvDiagnosticsOnlineCheck.Add_Click({
+        Set-ApConfigValue 'diagnosticsOnline' ([bool]$script:ApEl.AdvDiagnosticsOnlineCheck.IsChecked)
+        Save-ApConfig | Out-Null
+    })
+
     $el.AdvVerifyEngineButton.Add_Click({
         $el = $script:ApEl
         if (-not $script:ApEnginePath) {
@@ -1227,11 +1234,36 @@ function Initialize-ApGui {
             return
         }
 
+        # -Online only adds lookups: app, policy and script GUIDs from the local logs are
+        # resolved to display names through Graph. Everything the script reports is still
+        # read from this machine, and nothing is written either way.
+        $online = [bool]$script:ApEl.AdvDiagnosticsOnlineCheck.IsChecked
+
+        # Same trap as a registration run: a broken sign-in module aborts the engine before
+        # any browser prompt appears, which reads as "nothing happened".
+        if ($online -and $script:ApGraphCheck -and -not $script:ApGraphCheck.Available -and
+            $script:ApGraphCheck.InstalledVersions.Count -gt 0) {
+            $proceed = Show-ApDialog -Title 'Sign-in will probably fail' -Owner $script:ApWin -ShowCancel `
+                -ConfirmText 'Try anyway' `
+                -Message ('The Microsoft Graph sign-in module is installed but cannot be loaded, so the online lookup will stop before a sign-in prompt appears. ' +
+                          'Clear the -Online option to run the local diagnostics anyway, or use "Repair sign-in module".') `
+                -Detail (Get-ApGraphModuleAdvice -Check $script:ApGraphCheck)
+            if (-not $proceed) { return }
+        }
+
+        # An 'Online' key is also what makes the launcher install the sign-in prerequisites
+        # non-interactively (see Get-ApDependencyPrepBlock); a local run must not touch the gallery.
+        $params = [ordered]@{}
+        $message = 'Collecting Autopilot diagnostics...'
+        if ($online) {
+            $params['Online'] = $true
+            $message = 'Collecting Autopilot diagnostics and signing in to resolve app and policy names...'
+        }
+
         $script:ApEl.NavLogs.IsChecked = $true
-        # The diagnostics script is read-only and needs no parameters.
-        Start-ApGuiRun -Parameters ([ordered]@{}) -OutputBox $script:ApEl.LogsOutput `
+        Start-ApGuiRun -Parameters $params -OutputBox $script:ApEl.LogsOutput `
                        -EnginePath $diag -Label 'diagnostics' `
-                       -StartMessage 'Collecting Autopilot diagnostics...'
+                       -StartMessage $message
     })
 
     $el.AdvWindowsUpdateButton.Add_Click({

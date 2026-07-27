@@ -37,6 +37,11 @@ Context 'Get-ApDefaultConfig' {
         $c.showConsoleWindow | Should -BeFalse
         $c.connectivityEndpoints | Should -BeNullOrEmpty
     }
+
+    It 'keeps the diagnostics Graph lookup opt-in' {
+        # A local diagnostics read must not require the sign-in module or a browser.
+        (Get-ApDefaultConfig).diagnosticsOnline | Should -BeFalse
+    }
 }
 
 Context 'Import-ApConfig' {

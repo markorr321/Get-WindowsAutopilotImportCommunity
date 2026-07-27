@@ -3,6 +3,24 @@
 All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/).
 
+## [1.2.0] - 2026-07-27
+
+### Added
+
+- **`-Online` mode for Autopilot diagnostics.** The Advanced page ran
+  `Get-AutopilotDiagnosticsCommunity.ps1` with no parameters, so every app, policy and
+  platform script in the ESP output appeared as a bare GUID. A new **Resolve app and policy
+  names from Intune** checkbox passes `-Online`, which signs in read-only
+  (`DeviceManagementApps.Read.All`, `DeviceManagementConfiguration.Read.All`) and resolves
+  those GUIDs to display names. Persisted as `diagnosticsOnline` in `config.json`.
+
+  Off by default, because the local read is the case that has to work in OOBE: without an
+  `Online` key in the parameter hashtable the launcher skips the sign-in prep block entirely,
+  so a plain diagnostics run still touches neither the PowerShell Gallery nor a browser. When
+  the switch is on, the run reuses the same prerequisite handling as a registration — and warns
+  up front if the Graph module is installed but unloadable, which would otherwise abort the run
+  before any sign-in prompt appeared.
+
 ## [1.1.0] - 2026-07-26
 
 ### Added

@@ -41,6 +41,11 @@ function Get-ApDefaultConfig {
         # the whole point of this rewrite is that output lands in the GUI.
         showConsoleWindow     = $false
 
+        # Run the diagnostics script with -Online, which resolves app and policy GUIDs to
+        # display names via Graph. Off by default: the local read is the common case and
+        # needs neither the sign-in module nor a browser, which matters in OOBE.
+        diagnosticsOnline     = $false
+
         # $null = use the built-in list from Get-ApDefaultEndpoints.
         connectivityEndpoints = $null
 

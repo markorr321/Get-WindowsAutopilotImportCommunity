@@ -509,7 +509,9 @@
                   <StackPanel>
                     <TextBlock Style="{StaticResource CardTitle}" Text="Tools"/>
                     <Button x:Name="AdvDiagnosticsButton" Style="{StaticResource SecondaryButton}" Content="Run Autopilot diagnostics" HorizontalAlignment="Left" Margin="0,0,0,8"/>
-                    <TextBlock Style="{StaticResource HintText}" Margin="2,0,0,12" Text="Reads this machine's Autopilot and enrolment state from the local event logs and registry."/>
+                    <TextBlock Style="{StaticResource HintText}" Margin="2,0,0,8" Text="Reads this machine's Autopilot and enrolment state from the local event logs and registry."/>
+                    <CheckBox x:Name="AdvDiagnosticsOnlineCheck" Content="Resolve app and policy names from Intune (-Online)"/>
+                    <TextBlock Style="{StaticResource HintText}" Margin="28,2,0,12" Text="Without this, apps and policies appear as GUIDs. With it the run signs in to Graph read-only, so it needs the sign-in module, network access and a browser prompt."/>
                     <Button x:Name="AdvWindowsUpdateButton" Style="{StaticResource SecondaryButton}" Content="Install Windows updates" HorizontalAlignment="Left" Margin="0,0,0,8"/>
                     <TextBlock Style="{StaticResource HintText}" Margin="2,0,0,0" Text="Uses the in-box Windows Update agent, so no module download is needed. Runs in its own window because the device may restart."/>
                   </StackPanel>
