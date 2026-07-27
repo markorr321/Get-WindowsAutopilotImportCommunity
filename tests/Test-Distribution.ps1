@@ -173,6 +173,40 @@ try {
         }
     }
     Check 'every editable TextBox gets a line box >= its FontSize' ($tooShort.Count -eq 0) ($tooShort -join '; ')
+
+    # ---- log pane scrollbars ----
+    # The ScrollBar style sizes the vertical bar with Width/MinWidth. Those must be released
+    # for a horizontal bar or it collapses to a 12x12 stub in the corner, leaving long engine
+    # lines unreachable. Overflow the pane both ways and check the bar actually spans it.
+    $logs = $ui.Elements['LogsOutput']
+    $logs.Text = ((1..300 | ForEach-Object { '[{0:0000}] {1}' -f $_, ('wide ' * 40) }) -join "`r`n")
+    $probeWin.UpdateLayout()
+
+    $logScroller = @(Get-ApVisualDescendant -Element $logs -TypeName 'ScrollViewer')[0]
+    Check 'logs pane overflows both axes' `
+        ($logScroller.ExtentWidth -gt $logScroller.ViewportWidth -and $logScroller.ExtentHeight -gt $logScroller.ViewportHeight) `
+        ("extent $([int]$logScroller.ExtentWidth)x$([int]$logScroller.ExtentHeight) viewport $([int]$logScroller.ViewportWidth)x$([int]$logScroller.ViewportHeight)")
+
+    $logBars = @(Get-ApVisualDescendant -Element $logs -TypeName 'ScrollBar')
+    $vertical = @($logBars | Where-Object { $_.Orientation -eq 'Vertical' -and $_.IsVisible })
+    $horizontal = @($logBars | Where-Object { $_.Orientation -eq 'Horizontal' -and $_.IsVisible })
+
+    Check 'logs pane shows a vertical scrollbar' `
+        ($vertical.Count -eq 1 -and $vertical[0].ActualHeight -gt 100) `
+        $(if ($vertical.Count) { "$([int]$vertical[0].ActualWidth)x$([int]$vertical[0].ActualHeight)" } else { 'none' })
+
+    Check 'logs pane horizontal scrollbar spans the pane, not a 12px stub' `
+        ($horizontal.Count -eq 1 -and $horizontal[0].ActualWidth -gt 100) `
+        $(if ($horizontal.Count) { "$([int]$horizontal[0].ActualWidth)x$([int]$horizontal[0].ActualHeight)" } else { 'none' })
+
+    # The stock ScrollViewer template fills the junction of the two bars with
+    # SystemColors.ControlBrush (#F0F0F0) unless the theme overrides the key.
+    $corner = @(Get-ApVisualDescendant -Element $logs -TypeName 'Rectangle' |
+                 Where-Object { $_.ActualWidth -le 20 -and $_.ActualHeight -le 20 -and $_.Fill })
+    $paleCorner = @($corner | Where-Object {
+        $_.Fill.Color.R -gt 100 -and $_.Fill.Color.G -gt 100 -and $_.Fill.Color.B -gt 100 })
+    Check 'scrollbar corner is themed, not system white' ($paleCorner.Count -eq 0) `
+        (($paleCorner | ForEach-Object { "$($_.Fill)" }) -join ', ')
 }
 finally {
     $probeWin.Close()

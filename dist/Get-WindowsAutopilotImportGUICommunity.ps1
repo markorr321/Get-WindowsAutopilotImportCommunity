@@ -59,7 +59,7 @@ Website : https://orr365.tools
 License : MIT
 
 GENERATED FILE. Do not edit by hand: change the sources under src\ and re-run build.ps1.
-Built 2026-07-27 04:03:22 with engine v5.0.16.
+Built 2026-07-27 04:15:04 with engine v5.0.16.
 
 Autopilot engine: get-windowsautopilotinfocommunity.ps1 (c) Andrew S Taylor, MIT, embedded
 unmodified with its Authenticode signature intact.
@@ -768,6 +768,13 @@ $script:ApEmbeddedXaml['Dark'] = @'
   <SolidColorBrush x:Key="ErrorBrush"         Color="#F03A47"/>
   <SolidColorBrush x:Key="ErrorBrushDim"      Color="#C92B37"/>
 
+  <!-- ScrollViewer is not hand-templated, and its stock template fills the square where a
+       horizontal and a vertical bar meet with SystemColors.ControlBrush: #F0F0F0, a white
+       block in the corner of every log pane. The fill is a DynamicResource lookup, so
+       overriding the key here is enough; matching the output pane background is what makes
+       the corner disappear rather than merely darken. -->
+  <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#121212"/>
+
   <FontFamily x:Key="UiFont">Segoe UI Variable, Segoe UI</FontFamily>
   <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Courier New</FontFamily>
 
@@ -1316,7 +1323,9 @@ $script:ApEmbeddedXaml['Dark'] = @'
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="Thumb">
-          <Border x:Name="Bd" Background="#3A3A3A" CornerRadius="4" Margin="3,0,3,0"/>
+          <!-- Even inset on all four sides so the same thumb reads correctly whether the
+               bar is vertical or horizontal. -->
+          <Border x:Name="Bd" Background="#3A3A3A" CornerRadius="4" Margin="3"/>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
               <Setter TargetName="Bd" Property="Background" Value="#565656"/>
@@ -1327,6 +1336,10 @@ $script:ApEmbeddedXaml['Dark'] = @'
     </Setter>
   </Style>
 
+  <!-- Width/MinWidth here size the *vertical* bar. They must be released for a horizontal
+       one, or it is pinned to a 12x12 stub in the corner instead of spanning the viewport:
+       the Logs pane could scroll down but never sideways, so long engine lines were
+       unreachable. See the Style.Triggers block below. -->
   <Style TargetType="ScrollBar">
     <Setter Property="Background" Value="Transparent"/>
     <Setter Property="Width" Value="12"/>
@@ -1351,14 +1364,23 @@ $script:ApEmbeddedXaml['Dark'] = @'
           </Grid>
           <ControlTemplate.Triggers>
             <Trigger Property="Orientation" Value="Horizontal">
-              <Setter Property="Height" Value="12"/>
-              <Setter Property="MinHeight" Value="12"/>
               <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False"/>
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
       </Setter.Value>
     </Setter>
+    <Style.Triggers>
+      <!-- A horizontal bar must stretch along its axis and be thin across it: exactly the
+           opposite of the setters above. Width="Auto" clears the fixed width rather than
+           fighting it. -->
+      <Trigger Property="Orientation" Value="Horizontal">
+        <Setter Property="Width" Value="Auto"/>
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="Height" Value="12"/>
+        <Setter Property="MinHeight" Value="12"/>
+      </Trigger>
+    </Style.Triggers>
   </Style>
 
   <!-- ============================ datagrid ============================ -->
@@ -7141,12 +7163,27 @@ function Add-ApOutput {
     if (-not $Box) { return }
     if (-not $Lines -or $Lines.Count -eq 0) { return }
 
+    # Follow the tail only while the view is already at the bottom. This used to call
+    # ScrollToEnd() unconditionally, and because a run appends every 250ms, scrolling up to
+    # read an earlier line was undone before it could be read. Measured before appending:
+    # afterwards ExtentHeight has already grown and nothing looks like the bottom.
+    # A 2px tolerance covers the fractional offsets a partially scrolled line leaves behind.
+    $followTail = $true
+    try {
+        if ($Box.ExtentHeight -gt $Box.ViewportHeight) {
+            $followTail = ($Box.VerticalOffset + $Box.ViewportHeight) -ge ($Box.ExtentHeight - 2)
+        }
+    }
+    catch {
+        # No layout yet (the box has never been shown), so the tail is trivially in view.
+    }
+
     $stamp = Get-Date -Format 'HH:mm:ss'
     $text = ($Lines | ForEach-Object { "$stamp  $_" }) -join [Environment]::NewLine
 
     if ($Box.Text.Length -gt 0) { $Box.AppendText([Environment]::NewLine) }
     $Box.AppendText($text)
-    $Box.ScrollToEnd()
+    if ($followTail) { $Box.ScrollToEnd() }
 }
 
 function Show-ApPage {

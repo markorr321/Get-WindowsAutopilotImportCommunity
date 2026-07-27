@@ -25,6 +25,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
   is shorter than its own font size — the condition is invisible to a parse check, and this
   guard reproduces the bug on the pre-fix build.
 
+- **The Logs and Live output panes would not scroll sideways.** The `ScrollBar` style set
+  `Width`/`MinWidth` unconditionally, which is right for a vertical bar and wrong for a
+  horizontal one: instead of spanning the viewport it collapsed to a 12×12 stub in the corner.
+  Log lines are deliberately unwrapped, so anything past the right edge — most engine
+  narration — was simply unreachable. Released via an `Orientation` trigger, and the thumb is
+  now inset evenly on all four sides so it reads correctly either way.
+
+- **Scrolling up during a run was undone 250ms later.** Every batch of engine output called
+  `ScrollToEnd()`, so reading back through a live run was impossible. Output now follows the
+  tail only when the view is already at the bottom; scroll up and the position holds, return to
+  the bottom and it resumes following.
+
+- **The junction of the two scrollbars was a white square.** `ScrollViewer` is not
+  hand-templated, and the stock template fills that corner with `SystemColors.ControlBrush`
+  (#F0F0F0). The theme now overrides the brush key.
+
+  All four are covered by new harness checks: both bars visible and correctly sized on a pane
+  overflowing each way, and no pale corner rectangle.
+
 ## [1.2.0] - 2026-07-27
 
 ### Added

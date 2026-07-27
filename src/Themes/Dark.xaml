@@ -43,6 +43,13 @@
   <SolidColorBrush x:Key="ErrorBrush"         Color="#F03A47"/>
   <SolidColorBrush x:Key="ErrorBrushDim"      Color="#C92B37"/>
 
+  <!-- ScrollViewer is not hand-templated, and its stock template fills the square where a
+       horizontal and a vertical bar meet with SystemColors.ControlBrush: #F0F0F0, a white
+       block in the corner of every log pane. The fill is a DynamicResource lookup, so
+       overriding the key here is enough; matching the output pane background is what makes
+       the corner disappear rather than merely darken. -->
+  <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#121212"/>
+
   <FontFamily x:Key="UiFont">Segoe UI Variable, Segoe UI</FontFamily>
   <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Courier New</FontFamily>
 
@@ -591,7 +598,9 @@
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="Thumb">
-          <Border x:Name="Bd" Background="#3A3A3A" CornerRadius="4" Margin="3,0,3,0"/>
+          <!-- Even inset on all four sides so the same thumb reads correctly whether the
+               bar is vertical or horizontal. -->
+          <Border x:Name="Bd" Background="#3A3A3A" CornerRadius="4" Margin="3"/>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
               <Setter TargetName="Bd" Property="Background" Value="#565656"/>
@@ -602,6 +611,10 @@
     </Setter>
   </Style>
 
+  <!-- Width/MinWidth here size the *vertical* bar. They must be released for a horizontal
+       one, or it is pinned to a 12x12 stub in the corner instead of spanning the viewport:
+       the Logs pane could scroll down but never sideways, so long engine lines were
+       unreachable. See the Style.Triggers block below. -->
   <Style TargetType="ScrollBar">
     <Setter Property="Background" Value="Transparent"/>
     <Setter Property="Width" Value="12"/>
@@ -626,14 +639,23 @@
           </Grid>
           <ControlTemplate.Triggers>
             <Trigger Property="Orientation" Value="Horizontal">
-              <Setter Property="Height" Value="12"/>
-              <Setter Property="MinHeight" Value="12"/>
               <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False"/>
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
       </Setter.Value>
     </Setter>
+    <Style.Triggers>
+      <!-- A horizontal bar must stretch along its axis and be thin across it: exactly the
+           opposite of the setters above. Width="Auto" clears the fixed width rather than
+           fighting it. -->
+      <Trigger Property="Orientation" Value="Horizontal">
+        <Setter Property="Width" Value="Auto"/>
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="Height" Value="12"/>
+        <Setter Property="MinHeight" Value="12"/>
+      </Trigger>
+    </Style.Triggers>
   </Style>
 
   <!-- ============================ datagrid ============================ -->

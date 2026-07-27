@@ -132,12 +132,27 @@ function Add-ApOutput {
     if (-not $Box) { return }
     if (-not $Lines -or $Lines.Count -eq 0) { return }
 
+    # Follow the tail only while the view is already at the bottom. This used to call
+    # ScrollToEnd() unconditionally, and because a run appends every 250ms, scrolling up to
+    # read an earlier line was undone before it could be read. Measured before appending:
+    # afterwards ExtentHeight has already grown and nothing looks like the bottom.
+    # A 2px tolerance covers the fractional offsets a partially scrolled line leaves behind.
+    $followTail = $true
+    try {
+        if ($Box.ExtentHeight -gt $Box.ViewportHeight) {
+            $followTail = ($Box.VerticalOffset + $Box.ViewportHeight) -ge ($Box.ExtentHeight - 2)
+        }
+    }
+    catch {
+        # No layout yet (the box has never been shown), so the tail is trivially in view.
+    }
+
     $stamp = Get-Date -Format 'HH:mm:ss'
     $text = ($Lines | ForEach-Object { "$stamp  $_" }) -join [Environment]::NewLine
 
     if ($Box.Text.Length -gt 0) { $Box.AppendText([Environment]::NewLine) }
     $Box.AppendText($text)
-    $Box.ScrollToEnd()
+    if ($followTail) { $Box.ScrollToEnd() }
 }
 
 function Show-ApPage {
