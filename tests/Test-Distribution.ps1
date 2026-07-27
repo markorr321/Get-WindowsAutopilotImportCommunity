@@ -130,7 +130,7 @@ $probeWin = $ui.Window
 $probeWin.Left = -4000; $probeWin.Top = -4000; $probeWin.ShowInTaskbar = $false
 $probeWin.Show()
 try {
-    foreach ($page in 'PageRegister', 'PageDevice', 'PageBatch', 'PageNetwork', 'PageAdvanced', 'PageLogs') {
+    foreach ($page in 'PageRegister', 'PageDevice', 'PageNetwork', 'PageAdvanced', 'PageLogs') {
         if ($ui.Elements.ContainsKey($page)) { $ui.Elements[$page].Visibility = 'Visible' }
     }
     $probeWin.UpdateLayout()

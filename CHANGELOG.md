@@ -3,6 +3,37 @@
 All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/).
 
+## [1.3.0] - 2026-07-27
+
+### Removed
+
+- **The Batch import page.** It could not work as advertised, and half of it could never work
+  at all.
+
+  The community engine only reads `-InputFile` inside its `-Online` + `-identifier` branch
+  (`get-windowsautopilotinfocommunity.ps1:2234`). The Autopilot v1 online path works purely
+  from the devices its `Process` block collected — and that block begins with
+  `if ($InputFile -eq "")`, so passing an input file *skips collection entirely*. A v1 batch
+  import therefore iterated an empty collection and reported success having imported nothing:
+  a silent no-op. The GUI was building `-Online -InputFile file.csv` correctly; the engine
+  simply ignored it.
+
+  The v2 half did work, but only against a **headerless** `Manufacturer,Model,Serial` file,
+  because the engine supplies those column names itself via `Import-Csv -header`. A CSV with a
+  title row imported a bogus device whose serial was the literal `Serial`. Nor could the v1
+  hardware-hash CSV that the Device page exports ever be batch-imported — no code path reads
+  that shape.
+
+  Rather than ship a page offering one impossible mode and one with an undocumented file
+  format, it is gone: the nav item, the page, its handlers, the `Batch` operation and the
+  `InputFile` request field. `Build-ApEngineArguments` now throws on an unknown operation
+  instead of quietly emitting a command that does nothing.
+
+  **Offline capture is unaffected** — the Device page still exports the hardware hash CSV (v1),
+  the device identifier CSV (v2) and the partner CSV format. To import a collected CSV in bulk,
+  use Intune's own **Devices > Enroll devices > Windows enrollment > Devices > Import**, which
+  is the supported path for that file.
+
 ## [1.2.2] - 2026-07-27
 
 ### Fixed

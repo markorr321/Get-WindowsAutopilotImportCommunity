@@ -20,7 +20,7 @@ $script:ApPendingV2Reboot = $false
 # the session log from overwriting a report the operator is still reading.
 $script:ApLogsShowingRun = $false
 $script:ApEnginePath = $null
-$script:ApAppVersion = '1.2.2'
+$script:ApAppVersion = '1.3.0'
 $script:ApAuthor = 'Mark Orr'
 $script:ApAuthorHandle = '@markorr321'
 $script:ApAuthorSite = 'https://orr365.tools'
@@ -166,7 +166,7 @@ function Show-ApPage {
     #>
     param([Parameter(Mandatory)][string]$Name)
 
-    foreach ($page in @('PageRegister', 'PageDevice', 'PageBatch', 'PageNetwork', 'PageAdvanced', 'PageLogs')) {
+    foreach ($page in @('PageRegister', 'PageDevice', 'PageNetwork', 'PageAdvanced', 'PageLogs')) {
         $script:ApEl[$page].Visibility = if ($page -eq $Name) { 'Visible' } else { 'Collapsed' }
     }
 }
@@ -436,19 +436,12 @@ function Get-ApUiRequest {
     #>
     [CmdletBinding()]
     param(
-        [ValidateSet('Register', 'Export', 'Batch')][string]$Operation = 'Register'
+        [ValidateSet('Register', 'Export')][string]$Operation = 'Register'
     )
 
     $el = $script:ApEl
     $request = New-ApRegistrationRequest
     $request.Operation = $Operation
-
-    if ($Operation -eq 'Batch') {
-        $request.Mode = if ($el.BatchModeV2.IsChecked) { 'v2' } else { 'v1' }
-        $request.InputFile = $el.BatchFileBox.Text.Trim()
-        $request.WaitForAssignment = [bool]$el.BatchWaitCheck.IsChecked
-        return $request
-    }
 
     $request.Mode = if ($el.ModeV2.IsChecked) { 'v2' } else { 'v1' }
 
@@ -508,8 +501,6 @@ function Set-ApRunningState {
     $el = $script:ApEl
     $el.RegisterButton.IsEnabled = -not $IsRunning
     $el.PreviewButton.IsEnabled = -not $IsRunning
-    $el.BatchRunButton.IsEnabled = -not $IsRunning
-    $el.BatchPreviewButton.IsEnabled = -not $IsRunning
     $el.AdvDiagnosticsButton.IsEnabled = -not $IsRunning
     $el.AdvDiagnosticsOnlineCheck.IsEnabled = -not $IsRunning
     $el.AdvWindowsUpdateButton.IsEnabled = -not $IsRunning
@@ -978,7 +969,6 @@ function Initialize-ApGui {
     # ---------- navigation ----------
     $el.NavRegister.Add_Checked({ Show-ApPage 'PageRegister' })
     $el.NavDevice.Add_Checked({ Show-ApPage 'PageDevice' })
-    $el.NavBatch.Add_Checked({ Show-ApPage 'PageBatch' })
     $el.NavNetwork.Add_Checked({ Show-ApPage 'PageNetwork' })
     $el.NavAdvanced.Add_Checked({ Show-ApPage 'PageAdvanced' })
     $el.NavLogs.Add_Checked({ Show-ApPage 'PageLogs'; Update-ApLogsPage })
@@ -1158,46 +1148,6 @@ function Initialize-ApGui {
         catch {
             Set-ApStatus -Text "Could not copy: $($_.Exception.Message)" -IsError
         }
-    })
-
-    # ---------- batch page ----------
-    $el.BatchBrowseButton.Add_Click({
-        $path = Show-ApOpenFileDialog -Title 'Select a device CSV'
-        if ($path) { $script:ApEl.BatchFileBox.Text = $path }
-    })
-
-    $el.BatchRunButton.Add_Click({
-        $el = $script:ApEl
-        $request = Get-ApUiRequest -Operation Batch
-
-        if (-not $request.InputFile) {
-            Show-ApDialog -Title 'Choose a CSV' -Owner $script:ApWin -Message 'Select the CSV file to import first.' | Out-Null
-            return
-        }
-        if (-not (Test-Path -LiteralPath $request.InputFile)) {
-            Show-ApDialog -Title 'File not found' -Owner $script:ApWin -Message "There is no file at $($request.InputFile)." | Out-Null
-            return
-        }
-
-        try { $built = Build-ApEngineArguments $request }
-        catch {
-            Show-ApDialog -Title 'Cannot import' -Owner $script:ApWin -Message $_.Exception.Message | Out-Null
-            return
-        }
-
-        Start-ApGuiRun -Parameters $built.Parameters -OutputBox $el.BatchOutput `
-                       -Label 'batch' -StartMessage "Importing $($request.InputFile)..."
-    })
-
-    $el.BatchPreviewButton.Add_Click({
-        try { $built = Build-ApEngineArguments (Get-ApUiRequest -Operation Batch) }
-        catch {
-            Show-ApDialog -Title 'Cannot build the command' -Owner $script:ApWin -Message $_.Exception.Message | Out-Null
-            return
-        }
-        $detail = Get-ApPreviewCommand -Parameters $built.Parameters -ScriptPath $script:ApEnginePath
-        Show-ApDialog -Title 'Preview command' -Owner $script:ApWin -Detail $detail -ShowCopy `
-                      -Message 'This is exactly what will run. Nothing has been executed.' | Out-Null
     })
 
     # ---------- network page ----------

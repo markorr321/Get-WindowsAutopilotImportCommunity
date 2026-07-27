@@ -9,7 +9,7 @@
 .PROJECTURI https://github.com/markorr321/Get-WindowsAutopilotImportCommunity
 .RELEASENOTES
 1.0.0 Initial release. Autopilot v1 and v2 (Device Preparation) support, staged progress,
-      working network prerequisite check, offline export, batch import.
+      working network prerequisite check, offline export.
 #>
 
 <#

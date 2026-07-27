@@ -82,7 +82,6 @@
           <StackPanel DockPanel.Dock="Top" Margin="0,12,0,0">
             <RadioButton x:Name="NavRegister" Style="{StaticResource NavItem}" GroupName="Nav" Content="Register" IsChecked="True"/>
             <RadioButton x:Name="NavDevice"   Style="{StaticResource NavItem}" GroupName="Nav" Content="Device"/>
-            <RadioButton x:Name="NavBatch"    Style="{StaticResource NavItem}" GroupName="Nav" Content="Batch import"/>
             <RadioButton x:Name="NavNetwork"  Style="{StaticResource NavItem}" GroupName="Nav" Content="Network check"/>
             <RadioButton x:Name="NavAdvanced" Style="{StaticResource NavItem}" GroupName="Nav" Content="Advanced"/>
             <RadioButton x:Name="NavLogs"     Style="{StaticResource NavItem}" GroupName="Nav" Content="Logs"/>
@@ -347,68 +346,6 @@
               </StackPanel>
             </Grid>
           </ScrollViewer>
-        </Grid>
-
-        <!-- ================ Batch ================ -->
-        <Grid x:Name="PageBatch" Margin="24,20,24,16" Visibility="Collapsed">
-          <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-          </Grid.RowDefinitions>
-
-          <StackPanel Grid.Row="0" Margin="0,0,0,16">
-            <TextBlock Style="{StaticResource PageTitle}" Text="Batch import"/>
-            <TextBlock Style="{StaticResource PageSubtitle}" Text="Import many devices from a CSV that was collected elsewhere. Local hardware is not read in this mode."/>
-          </StackPanel>
-
-          <Border Grid.Row="1" Style="{StaticResource Card}">
-            <StackPanel>
-              <TextBlock Style="{StaticResource CardTitle}" Text="Source file"/>
-              <Grid>
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="*"/>
-                  <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBox x:Name="BatchFileBox" Grid.Column="0" Height="38" Margin="0,0,10,0"/>
-                <Button x:Name="BatchBrowseButton" Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Browse" Height="38"/>
-              </Grid>
-              <TextBlock x:Name="BatchFileHint" Style="{StaticResource HintText}"
-                         Text="Autopilot v1 expects the columns: Device Serial Number, Windows Product ID, Hardware Hash. Device Preparation expects: Manufacturer, Model, Serial (no header row)."/>
-
-              <TextBlock Style="{StaticResource FieldLabel}" Text="MODE" Margin="2,16,0,6"/>
-              <Grid>
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="*"/>
-                  <ColumnDefinition Width="10"/>
-                  <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <RadioButton x:Name="BatchModeV1" Grid.Column="0" Style="{StaticResource Segment}" GroupName="BatchMode" IsChecked="True" Height="40" Content="Autopilot v1"/>
-                <RadioButton x:Name="BatchModeV2" Grid.Column="2" Style="{StaticResource Segment}" GroupName="BatchMode" Height="40" Content="Device Preparation"/>
-              </Grid>
-
-              <CheckBox x:Name="BatchWaitCheck" Content="Wait for deployment profiles to be assigned" Margin="0,14,0,0"/>
-            </StackPanel>
-          </Border>
-
-          <Grid Grid.Row="2" Margin="0,2,0,12">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*"/>
-              <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <Button x:Name="BatchRunButton" Grid.Column="0" Style="{StaticResource PrimaryButton}" Content="IMPORT FROM CSV" Margin="0,0,10,0"/>
-            <Button x:Name="BatchPreviewButton" Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Preview command" Height="48"/>
-          </Grid>
-
-          <Grid Grid.Row="3">
-            <Grid.RowDefinitions>
-              <RowDefinition Height="Auto"/>
-              <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-            <TextBlock Grid.Row="0" Style="{StaticResource FieldLabel}" Text="LIVE OUTPUT"/>
-            <TextBox x:Name="BatchOutput" Grid.Row="1" Style="{StaticResource OutputBox}" MinHeight="120"/>
-          </Grid>
         </Grid>
 
         <!-- ================ Network ================ -->

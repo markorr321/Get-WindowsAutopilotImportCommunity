@@ -30,7 +30,7 @@ function New-ApRegistrationRequest {
     param()
 
     return [ordered]@{
-        # Register = push to tenant; Export = offline CSV only; Batch = import a CSV.
+        # Register = push to tenant; Export = offline CSV only.
         Operation            = 'Register'
 
         # v1 = hardware hash (windowsAutopilotDeviceIdentities)
@@ -59,7 +59,6 @@ function New-ApRegistrationRequest {
         ChangePK             = ''
 
         OutputFile           = ''
-        InputFile            = ''
         Append               = $false
         Partner              = $false
     }
@@ -100,13 +99,20 @@ function Build-ApEngineArguments {
     $mode      = Get-ApRequestValue $r 'Mode' 'v1'
     $isV2      = ($mode -eq 'v2')
 
+    # 'Batch' was removed in 1.3.0. The engine only reads -InputFile on its -identifier path
+    # (get-windowsautopilotinfocommunity.ps1:2234), and its Process block skips device
+    # collection entirely when -InputFile is set, so a v1 batch import collected nothing and
+    # reported success having imported zero devices. Fail loudly rather than build that again.
+    if ($operation -notin @('Register', 'Export')) {
+        throw "'$operation' is not a supported operation. Use Register or Export."
+    }
+
     $groupTag     = (Get-ApRequestValue $r 'GroupTag' '').Trim()
     $assignedUser = (Get-ApRequestValue $r 'AssignedUser' '').Trim()
     $computerName = (Get-ApRequestValue $r 'AssignedComputerName' '').Trim()
     $addToGroup   = (Get-ApRequestValue $r 'AddToGroup' '').Trim()
     $changePk     = (Get-ApRequestValue $r 'ChangePK' '').Trim()
     $outputFile   = (Get-ApRequestValue $r 'OutputFile' '').Trim()
-    $inputFile    = (Get-ApRequestValue $r 'InputFile' '').Trim()
 
     $wait   = [bool](Get-ApRequestValue $r 'WaitForAssignment' $false)
     $reboot = [bool](Get-ApRequestValue $r 'Reboot' $false)
@@ -154,13 +160,8 @@ function Build-ApEngineArguments {
         }
     }
 
-    # ---- online: Register / Batch --------------------------------------------
+    # ---- online: Register ----------------------------------------------------
     $p['Online'] = $true
-
-    if ($operation -eq 'Batch') {
-        if (-not $inputFile) { throw 'A CSV file is required for a batch import.' }
-        $p['InputFile'] = $inputFile
-    }
 
     if ($isV2) {
         # Constraint 3: the -identifier path ignores all of these. Warn rather than

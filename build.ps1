@@ -264,7 +264,7 @@ Runs from a single self-contained file with nothing to download first. The windo
 and the Autopilot engine are all embedded, so it works during OOBE on a restricted network.
 
 Includes live staged progress with a working cancel button, an offline CSV export of both the
-hardware hash and the device identifier, batch import from CSV, a concurrent network
+hardware hash and the device identifier, a concurrent network
 prerequisite check across the documented Autopilot and Intune endpoints, Autopilot
 diagnostics, and a full session log.
 

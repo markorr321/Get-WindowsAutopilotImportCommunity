@@ -1,5 +1,5 @@
 ﻿<#PSScriptInfo
-.VERSION 1.2.2
+.VERSION 1.3.0
 .GUID 6f2b9c14-8d3e-4a71-9c5f-1b0e7a4d2c98
 .AUTHOR Mark Orr
 .COMPANYNAME orr365.tools
@@ -8,7 +8,7 @@
 .LICENSEURI https://github.com/markorr321/Get-WindowsAutopilotImportCommunity/blob/main/LICENSE
 .PROJECTURI https://github.com/markorr321/Get-WindowsAutopilotImportCommunity
 .RELEASENOTES
-1.2.2 Single-file build. Autopilot v1 and v2 (Device Preparation) support.
+1.3.0 Single-file build. Autopilot v1 and v2 (Device Preparation) support.
 #>
 
 <#
@@ -28,7 +28,7 @@ Runs from a single self-contained file with nothing to download first. The windo
 and the Autopilot engine are all embedded, so it works during OOBE on a restricted network.
 
 Includes live staged progress with a working cancel button, an offline CSV export of both the
-hardware hash and the device identifier, batch import from CSV, a concurrent network
+hardware hash and the device identifier, a concurrent network
 prerequisite check across the documented Autopilot and Intune endpoints, Autopilot
 diagnostics, and a full session log.
 
@@ -59,7 +59,7 @@ Website : https://orr365.tools
 License : MIT
 
 GENERATED FILE. Do not edit by hand: change the sources under src\ and re-run build.ps1.
-Built 2026-07-27 05:05:58 with engine v5.0.16.
+Built 2026-07-27 05:58:25 with engine v5.0.16.
 
 Autopilot engine: get-windowsautopilotinfocommunity.ps1 (c) Andrew S Taylor, MIT, embedded
 unmodified with its Authenticode signature intact.
@@ -177,7 +177,6 @@ $script:ApEmbeddedXaml['MainWindow'] = @'
           <StackPanel DockPanel.Dock="Top" Margin="0,12,0,0">
             <RadioButton x:Name="NavRegister" Style="{StaticResource NavItem}" GroupName="Nav" Content="Register" IsChecked="True"/>
             <RadioButton x:Name="NavDevice"   Style="{StaticResource NavItem}" GroupName="Nav" Content="Device"/>
-            <RadioButton x:Name="NavBatch"    Style="{StaticResource NavItem}" GroupName="Nav" Content="Batch import"/>
             <RadioButton x:Name="NavNetwork"  Style="{StaticResource NavItem}" GroupName="Nav" Content="Network check"/>
             <RadioButton x:Name="NavAdvanced" Style="{StaticResource NavItem}" GroupName="Nav" Content="Advanced"/>
             <RadioButton x:Name="NavLogs"     Style="{StaticResource NavItem}" GroupName="Nav" Content="Logs"/>
@@ -442,68 +441,6 @@ $script:ApEmbeddedXaml['MainWindow'] = @'
               </StackPanel>
             </Grid>
           </ScrollViewer>
-        </Grid>
-
-        <!-- ================ Batch ================ -->
-        <Grid x:Name="PageBatch" Margin="24,20,24,16" Visibility="Collapsed">
-          <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-          </Grid.RowDefinitions>
-
-          <StackPanel Grid.Row="0" Margin="0,0,0,16">
-            <TextBlock Style="{StaticResource PageTitle}" Text="Batch import"/>
-            <TextBlock Style="{StaticResource PageSubtitle}" Text="Import many devices from a CSV that was collected elsewhere. Local hardware is not read in this mode."/>
-          </StackPanel>
-
-          <Border Grid.Row="1" Style="{StaticResource Card}">
-            <StackPanel>
-              <TextBlock Style="{StaticResource CardTitle}" Text="Source file"/>
-              <Grid>
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="*"/>
-                  <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBox x:Name="BatchFileBox" Grid.Column="0" Height="38" Margin="0,0,10,0"/>
-                <Button x:Name="BatchBrowseButton" Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Browse" Height="38"/>
-              </Grid>
-              <TextBlock x:Name="BatchFileHint" Style="{StaticResource HintText}"
-                         Text="Autopilot v1 expects the columns: Device Serial Number, Windows Product ID, Hardware Hash. Device Preparation expects: Manufacturer, Model, Serial (no header row)."/>
-
-              <TextBlock Style="{StaticResource FieldLabel}" Text="MODE" Margin="2,16,0,6"/>
-              <Grid>
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="*"/>
-                  <ColumnDefinition Width="10"/>
-                  <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <RadioButton x:Name="BatchModeV1" Grid.Column="0" Style="{StaticResource Segment}" GroupName="BatchMode" IsChecked="True" Height="40" Content="Autopilot v1"/>
-                <RadioButton x:Name="BatchModeV2" Grid.Column="2" Style="{StaticResource Segment}" GroupName="BatchMode" Height="40" Content="Device Preparation"/>
-              </Grid>
-
-              <CheckBox x:Name="BatchWaitCheck" Content="Wait for deployment profiles to be assigned" Margin="0,14,0,0"/>
-            </StackPanel>
-          </Border>
-
-          <Grid Grid.Row="2" Margin="0,2,0,12">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*"/>
-              <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <Button x:Name="BatchRunButton" Grid.Column="0" Style="{StaticResource PrimaryButton}" Content="IMPORT FROM CSV" Margin="0,0,10,0"/>
-            <Button x:Name="BatchPreviewButton" Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Preview command" Height="48"/>
-          </Grid>
-
-          <Grid Grid.Row="3">
-            <Grid.RowDefinitions>
-              <RowDefinition Height="Auto"/>
-              <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-            <TextBlock Grid.Row="0" Style="{StaticResource FieldLabel}" Text="LIVE OUTPUT"/>
-            <TextBox x:Name="BatchOutput" Grid.Row="1" Style="{StaticResource OutputBox}" MinHeight="120"/>
-          </Grid>
         </Grid>
 
         <!-- ================ Network ================ -->
@@ -4851,7 +4788,7 @@ function New-ApRegistrationRequest {
     param()
 
     return [ordered]@{
-        # Register = push to tenant; Export = offline CSV only; Batch = import a CSV.
+        # Register = push to tenant; Export = offline CSV only.
         Operation            = 'Register'
 
         # v1 = hardware hash (windowsAutopilotDeviceIdentities)
@@ -4880,7 +4817,6 @@ function New-ApRegistrationRequest {
         ChangePK             = ''
 
         OutputFile           = ''
-        InputFile            = ''
         Append               = $false
         Partner              = $false
     }
@@ -4921,13 +4857,20 @@ function Build-ApEngineArguments {
     $mode      = Get-ApRequestValue $r 'Mode' 'v1'
     $isV2      = ($mode -eq 'v2')
 
+    # 'Batch' was removed in 1.3.0. The engine only reads -InputFile on its -identifier path
+    # (get-windowsautopilotinfocommunity.ps1:2234), and its Process block skips device
+    # collection entirely when -InputFile is set, so a v1 batch import collected nothing and
+    # reported success having imported zero devices. Fail loudly rather than build that again.
+    if ($operation -notin @('Register', 'Export')) {
+        throw "'$operation' is not a supported operation. Use Register or Export."
+    }
+
     $groupTag     = (Get-ApRequestValue $r 'GroupTag' '').Trim()
     $assignedUser = (Get-ApRequestValue $r 'AssignedUser' '').Trim()
     $computerName = (Get-ApRequestValue $r 'AssignedComputerName' '').Trim()
     $addToGroup   = (Get-ApRequestValue $r 'AddToGroup' '').Trim()
     $changePk     = (Get-ApRequestValue $r 'ChangePK' '').Trim()
     $outputFile   = (Get-ApRequestValue $r 'OutputFile' '').Trim()
-    $inputFile    = (Get-ApRequestValue $r 'InputFile' '').Trim()
 
     $wait   = [bool](Get-ApRequestValue $r 'WaitForAssignment' $false)
     $reboot = [bool](Get-ApRequestValue $r 'Reboot' $false)
@@ -4975,13 +4918,8 @@ function Build-ApEngineArguments {
         }
     }
 
-    # ---- online: Register / Batch --------------------------------------------
+    # ---- online: Register ----------------------------------------------------
     $p['Online'] = $true
-
-    if ($operation -eq 'Batch') {
-        if (-not $inputFile) { throw 'A CSV file is required for a batch import.' }
-        $p['InputFile'] = $inputFile
-    }
 
     if ($isV2) {
         # Constraint 3: the -identifier path ignores all of these. Warn rather than
@@ -7018,26 +6956,6 @@ function Show-ApSaveFileDialog {
     if ($dialog.ShowDialog()) { return $dialog.FileName }
     return $null
 }
-
-function Show-ApOpenFileDialog {
-    <#
-    .SYNOPSIS
-    Open-file picker. Returns the chosen path, or $null if cancelled.
-    #>
-    [CmdletBinding()]
-    param(
-        [string]$Title = 'Select a file',
-        [string]$Filter = 'CSV files (*.csv)|*.csv|All files (*.*)|*.*'
-    )
-
-    $dialog = New-Object Microsoft.Win32.OpenFileDialog
-    $dialog.Title = $Title
-    $dialog.Filter = $Filter
-    $dialog.Multiselect = $false
-
-    if ($dialog.ShowDialog()) { return $dialog.FileName }
-    return $null
-}
 #endregion src\Private\Dialogs.ps1
 
 #region src\Public\Show-AutopilotImportGui.ps1
@@ -7063,7 +6981,7 @@ $script:ApPendingV2Reboot = $false
 # the session log from overwriting a report the operator is still reading.
 $script:ApLogsShowingRun = $false
 $script:ApEnginePath = $null
-$script:ApAppVersion = '1.2.2'
+$script:ApAppVersion = '1.3.0'
 $script:ApAuthor = 'Mark Orr'
 $script:ApAuthorHandle = '@markorr321'
 $script:ApAuthorSite = 'https://orr365.tools'
@@ -7209,7 +7127,7 @@ function Show-ApPage {
     #>
     param([Parameter(Mandatory)][string]$Name)
 
-    foreach ($page in @('PageRegister', 'PageDevice', 'PageBatch', 'PageNetwork', 'PageAdvanced', 'PageLogs')) {
+    foreach ($page in @('PageRegister', 'PageDevice', 'PageNetwork', 'PageAdvanced', 'PageLogs')) {
         $script:ApEl[$page].Visibility = if ($page -eq $Name) { 'Visible' } else { 'Collapsed' }
     }
 }
@@ -7479,19 +7397,12 @@ function Get-ApUiRequest {
     #>
     [CmdletBinding()]
     param(
-        [ValidateSet('Register', 'Export', 'Batch')][string]$Operation = 'Register'
+        [ValidateSet('Register', 'Export')][string]$Operation = 'Register'
     )
 
     $el = $script:ApEl
     $request = New-ApRegistrationRequest
     $request.Operation = $Operation
-
-    if ($Operation -eq 'Batch') {
-        $request.Mode = if ($el.BatchModeV2.IsChecked) { 'v2' } else { 'v1' }
-        $request.InputFile = $el.BatchFileBox.Text.Trim()
-        $request.WaitForAssignment = [bool]$el.BatchWaitCheck.IsChecked
-        return $request
-    }
 
     $request.Mode = if ($el.ModeV2.IsChecked) { 'v2' } else { 'v1' }
 
@@ -7551,8 +7462,6 @@ function Set-ApRunningState {
     $el = $script:ApEl
     $el.RegisterButton.IsEnabled = -not $IsRunning
     $el.PreviewButton.IsEnabled = -not $IsRunning
-    $el.BatchRunButton.IsEnabled = -not $IsRunning
-    $el.BatchPreviewButton.IsEnabled = -not $IsRunning
     $el.AdvDiagnosticsButton.IsEnabled = -not $IsRunning
     $el.AdvDiagnosticsOnlineCheck.IsEnabled = -not $IsRunning
     $el.AdvWindowsUpdateButton.IsEnabled = -not $IsRunning
@@ -8021,7 +7930,6 @@ function Initialize-ApGui {
     # ---------- navigation ----------
     $el.NavRegister.Add_Checked({ Show-ApPage 'PageRegister' })
     $el.NavDevice.Add_Checked({ Show-ApPage 'PageDevice' })
-    $el.NavBatch.Add_Checked({ Show-ApPage 'PageBatch' })
     $el.NavNetwork.Add_Checked({ Show-ApPage 'PageNetwork' })
     $el.NavAdvanced.Add_Checked({ Show-ApPage 'PageAdvanced' })
     $el.NavLogs.Add_Checked({ Show-ApPage 'PageLogs'; Update-ApLogsPage })
@@ -8201,46 +8109,6 @@ function Initialize-ApGui {
         catch {
             Set-ApStatus -Text "Could not copy: $($_.Exception.Message)" -IsError
         }
-    })
-
-    # ---------- batch page ----------
-    $el.BatchBrowseButton.Add_Click({
-        $path = Show-ApOpenFileDialog -Title 'Select a device CSV'
-        if ($path) { $script:ApEl.BatchFileBox.Text = $path }
-    })
-
-    $el.BatchRunButton.Add_Click({
-        $el = $script:ApEl
-        $request = Get-ApUiRequest -Operation Batch
-
-        if (-not $request.InputFile) {
-            Show-ApDialog -Title 'Choose a CSV' -Owner $script:ApWin -Message 'Select the CSV file to import first.' | Out-Null
-            return
-        }
-        if (-not (Test-Path -LiteralPath $request.InputFile)) {
-            Show-ApDialog -Title 'File not found' -Owner $script:ApWin -Message "There is no file at $($request.InputFile)." | Out-Null
-            return
-        }
-
-        try { $built = Build-ApEngineArguments $request }
-        catch {
-            Show-ApDialog -Title 'Cannot import' -Owner $script:ApWin -Message $_.Exception.Message | Out-Null
-            return
-        }
-
-        Start-ApGuiRun -Parameters $built.Parameters -OutputBox $el.BatchOutput `
-                       -Label 'batch' -StartMessage "Importing $($request.InputFile)..."
-    })
-
-    $el.BatchPreviewButton.Add_Click({
-        try { $built = Build-ApEngineArguments (Get-ApUiRequest -Operation Batch) }
-        catch {
-            Show-ApDialog -Title 'Cannot build the command' -Owner $script:ApWin -Message $_.Exception.Message | Out-Null
-            return
-        }
-        $detail = Get-ApPreviewCommand -Parameters $built.Parameters -ScriptPath $script:ApEnginePath
-        Show-ApDialog -Title 'Preview command' -Owner $script:ApWin -Detail $detail -ShowCopy `
-                      -Message 'This is exactly what will run. Nothing has been executed.' | Out-Null
     })
 
     # ---------- network page ----------

@@ -260,23 +260,19 @@ Describe 'Build-ApEngineArguments: offline export' {
     }
 }
 
-Describe 'Build-ApEngineArguments: batch import' {
-    It 'passes the CSV as -InputFile alongside -Online' {
+Describe 'Build-ApEngineArguments: retired operations' {
+    It 'rejects the removed Batch operation instead of silently building a no-op' {
+        # -InputFile is only read on the engine's -identifier path, so a v1 batch import
+        # collected nothing and reported success. The operation is gone; anything still asking
+        # for it is a bug, so make it loud rather than emitting a command that does nothing.
         $r = New-ApRegistrationRequest
         $r.Operation = 'Batch'
-        $r.InputFile = 'C:\Temp\devices.csv'
 
-        $p = (Build-ApEngineArguments $r).Parameters
-
-        $p['InputFile'] | Should -Be 'C:\Temp\devices.csv'
-        $p['Online'] | Should -BeTrue
+        { Build-ApEngineArguments $r } | Should -Throw '*not a supported operation*'
     }
 
-    It 'requires a CSV file' {
-        $r = New-ApRegistrationRequest
-        $r.Operation = 'Batch'
-
-        { Build-ApEngineArguments $r } | Should -Throw '*CSV file is required*'
+    It 'no longer carries an InputFile field' {
+        (New-ApRegistrationRequest).Contains('InputFile') | Should -BeFalse
     }
 }
 

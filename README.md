@@ -20,7 +20,7 @@ It is a ground-up rewrite of [ugurkocde/AutoPilot_Import_GUI](https://github.com
 | Network check | Present but **never worked** — every probe called `Write-Output -ForegroundColor`, which is not a valid parameter, so all 29 checks threw and the errors were swallowed by `SilentlyContinue` | Rewritten: 26 endpoints probed concurrently in ~0.4 s, colour-coded results grid, latency, required vs optional |
 | Group tag | Free-text box, retyped every time | Editable dropdown with remembered history |
 | Already-registered device | Not handled — the engine's `Read-Host` prompt would hang behind the console | Explicit choice: update tag / delete and re-add / assume new |
-| Also supports | — | Assigned user, computer name, Entra group membership, batch CSV import, offline export, wipe, sysprep, pre-provisioning, product key change, Autopilot diagnostics (local, or with Intune name resolution) |
+| Also supports | — | Assigned user, computer name, Entra group membership, offline export, wipe, sysprep, pre-provisioning, product key change, Autopilot diagnostics (local, or with Intune name resolution) |
 | Logging | `C:\Autopilot_Import_GUI_log.txt` | `%ProgramData%\AutopilotImportGUI\Logs\` with an in-app Logs page |
 | Windows Update | Downloads the `PSWindowsUpdate` module from PSGallery | Uses the in-box Windows Update agent, so it works on a restricted OOBE network |
 
@@ -146,9 +146,6 @@ Destructive combinations (delete-and-re-add, wipe, sysprep, product key change) 
 Full inventory, plus offline export that never touches your tenant: hardware hash CSV (v1), device identifier CSV (v2), partner CSV format, and clipboard copies.
 
 ![Device page](assets/03-device.png)
-
-### Batch import
-Point at a CSV collected elsewhere and import many devices at once. v1 expects `Device Serial Number, Windows Product ID, Hardware Hash`; v2 expects `Manufacturer, Model, Serial` with no header row.
 
 ### Network check
 Probes the documented Autopilot, Intune, Entra, TPM attestation, activation and update endpoints on TCP 443, concurrently. Failures sort to the top; required failures are red, optional ones amber.

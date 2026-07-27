@@ -152,23 +152,3 @@ function Show-ApSaveFileDialog {
     if ($dialog.ShowDialog()) { return $dialog.FileName }
     return $null
 }
-
-function Show-ApOpenFileDialog {
-    <#
-    .SYNOPSIS
-    Open-file picker. Returns the chosen path, or $null if cancelled.
-    #>
-    [CmdletBinding()]
-    param(
-        [string]$Title = 'Select a file',
-        [string]$Filter = 'CSV files (*.csv)|*.csv|All files (*.*)|*.*'
-    )
-
-    $dialog = New-Object Microsoft.Win32.OpenFileDialog
-    $dialog.Title = $Title
-    $dialog.Filter = $Filter
-    $dialog.Multiselect = $false
-
-    if ($dialog.ShowDialog()) { return $dialog.FileName }
-    return $null
-}
