@@ -380,6 +380,44 @@
             position: relative;
             margin-bottom: 1rem;
             white-space: pre;
+            padding-right: 5rem;
+        }
+
+        /* The button lives on this wrapper, not inside .code-block, so it stays pinned
+           when a long command scrolls horizontally. */
+        .code-wrap { position: relative; }
+
+        .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            padding: 0.3rem 0.6rem;
+            font-family: inherit;
+            font-size: 0.7rem;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            background: var(--bg-card-hover);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            opacity: 0.55;
+            transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+        }
+
+        .code-wrap:hover .copy-btn,
+        .copy-btn:focus-visible { opacity: 1; }
+
+        .copy-btn:hover {
+            color: var(--text-primary);
+            border-color: rgba(var(--accent-rgb), 0.5);
+        }
+
+        .copy-btn.copied {
+            opacity: 1;
+            color: var(--accent-light);
+            border-color: rgba(var(--accent-rgb), 0.6);
         }
 
         .code-block .comment { color: #6a9955; }
@@ -752,14 +790,6 @@ powershell.exe <span class="param">-ExecutionPolicy</span> Bypass <span class="p
                 <tr><td><span class="key">-NoElevate</span></td><td>Skips the automatic elevation prompt. The hardware hash cannot be read without administrator rights, so v1 will not work in this state.</td></tr>
             </tbody>
         </table>
-
-        <div class="code-steps" style="margin-top:2rem">
-<div class="code-block"><span class="comment"># Pre-fill the group tag and start in v1 mode</span>
-.\Get-WindowsAutopilotImportGUICommunity.ps1 <span class="param">-GroupTag</span> FINANCE <span class="param">-Mode</span> v1
-
-<span class="comment"># Device Preparation, pre-filled assigned user</span>
-.\Get-WindowsAutopilotImportGUICommunity.ps1 <span class="param">-Mode</span> v2 <span class="param">-AssignedUser</span> <span class="string">user@contoso.com</span></div>
-        </div>
     </section>
 
     <!-- Requirements -->
@@ -834,6 +864,60 @@ powershell.exe <span class="param">-ExecutionPolicy</span> Bypass <span class="p
     </div>
 
     <script>
+        // Copy buttons are built here rather than in the markup so the code blocks stay
+        // readable, and so a reader with JS disabled just sees plain, selectable commands.
+        (function () {
+            document.querySelectorAll('.code-block').forEach(function (block) {
+                var wrap = document.createElement('div');
+                wrap.className = 'code-wrap';
+                block.parentNode.insertBefore(wrap, block);
+                wrap.appendChild(block);
+
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'copy-btn';
+                btn.textContent = 'Copy';
+                btn.setAttribute('aria-label', 'Copy command to clipboard');
+                wrap.appendChild(btn);
+
+                btn.addEventListener('click', function () {
+                    copyText(block.textContent.trim(), function (ok) {
+                        btn.textContent = ok ? 'Copied' : 'Press Ctrl+C';
+                        btn.classList.toggle('copied', ok);
+                        setTimeout(function () {
+                            btn.textContent = 'Copy';
+                            btn.classList.remove('copied');
+                        }, 2000);
+                    });
+                });
+            });
+
+            function copyText(text, done) {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(
+                        function () { done(true); },
+                        function () { done(legacyCopy(text)); }
+                    );
+                } else {
+                    done(legacyCopy(text));
+                }
+            }
+
+            // Fallback for contexts where the async clipboard API is unavailable or blocked.
+            function legacyCopy(text) {
+                var ta = document.createElement('textarea');
+                ta.value = text;
+                ta.setAttribute('readonly', '');
+                ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+                document.body.appendChild(ta);
+                ta.select();
+                var ok = false;
+                try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+                document.body.removeChild(ta);
+                return ok;
+            }
+        })();
+
         function openLightbox(img) {
             var lb = document.getElementById('lightbox');
             document.getElementById('lightbox-img').src = img.src;
