@@ -26,8 +26,12 @@
             --text-primary: #e6edf3;
             --text-secondary: rgba(230, 237, 243, 0.7);
             --text-muted: rgba(230, 237, 243, 0.4);
-            --accent-start: #667eea;
-            --accent-end: #764ba2;
+            /* Matches src\Themes\Dark.xaml so the site and the app read as one product:
+               AccentBrush / AccentBrushPressed / AccentBrushHover. */
+            --accent-start: #0078D4;
+            --accent-end: #0061B0;
+            --accent-light: #1F8AE0;
+            --accent-rgb: 0, 120, 212;
             --border: rgba(255, 255, 255, 0.08);
             --code-bg: rgba(255, 255, 255, 0.06);
         }
@@ -42,7 +46,7 @@
             overflow-x: hidden;
         }
 
-        a { color: var(--accent-start); text-decoration: none; }
+        a { color: var(--accent-light); text-decoration: none; }
         a:hover { text-decoration: underline; }
 
         code {
@@ -70,8 +74,8 @@
             content: '';
             position: absolute;
             inset: 0;
-            background: radial-gradient(ellipse at 50% 0%, rgba(102, 126, 234, 0.15) 0%, transparent 60%),
-                        radial-gradient(ellipse at 80% 50%, rgba(118, 75, 162, 0.1) 0%, transparent 50%);
+            background: radial-gradient(ellipse at 50% 0%, rgba(0, 120, 212, 0.18) 0%, transparent 60%),
+                        radial-gradient(ellipse at 80% 50%, rgba(31, 138, 224, 0.12) 0%, transparent 50%);
             pointer-events: none;
         }
 
@@ -82,7 +86,7 @@
             opacity: 0.9;
             margin-bottom: 1rem;
             max-width: 100%;
-            background: linear-gradient(135deg, var(--accent-start), var(--accent-end));
+            background: linear-gradient(135deg, var(--accent-light), var(--accent-start));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -131,9 +135,9 @@
         .btn-primary {
             background: linear-gradient(135deg, var(--accent-start), var(--accent-end));
             color: white;
-            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 4px 20px rgba(var(--accent-rgb), 0.3);
         }
-        .btn-primary:hover { box-shadow: 0 6px 30px rgba(102, 126, 234, 0.45); }
+        .btn-primary:hover { box-shadow: 0 6px 30px rgba(var(--accent-rgb), 0.45); }
 
         .btn-secondary {
             background: var(--bg-card);
@@ -187,7 +191,7 @@
         }
         .feature-card:hover {
             background: var(--bg-card-hover);
-            border-color: rgba(102, 126, 234, 0.2);
+            border-color: rgba(var(--accent-rgb), 0.2);
         }
 
         .feature-icon { font-size: 1.6rem; margin-bottom: 0.8rem; }
@@ -228,7 +232,7 @@
             font-size: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 1.5px;
-            color: var(--accent-start);
+            color: var(--accent-light);
             margin-bottom: 0.6rem;
         }
 
@@ -248,7 +252,7 @@
 
         .mode-card li::before {
             content: '\2022';
-            color: var(--accent-start);
+            color: var(--accent-light);
             margin-right: 0.6rem;
         }
 
@@ -275,7 +279,7 @@
             cursor: pointer;
             transition: border-color 0.2s;
         }
-        .demo-wrapper:hover { border-color: rgba(102, 126, 234, 0.3); }
+        .demo-wrapper:hover { border-color: rgba(var(--accent-rgb), 0.3); }
 
         .demo-wrapper img {
             width: 100%;
@@ -301,7 +305,7 @@
         .screenshot-card.wide { grid-column: 1 / -1; }
 
         .screenshot-card:hover {
-            border-color: rgba(102, 126, 234, 0.3);
+            border-color: rgba(var(--accent-rgb), 0.3);
             transform: translateY(-2px);
         }
 
@@ -471,7 +475,7 @@
 
         .permission-group li::before {
             content: '>';
-            color: var(--accent-start);
+            color: var(--accent-light);
             margin-right: 0.5rem;
         }
 
@@ -528,7 +532,7 @@
         }
 
         .footer-links a { color: var(--text-secondary); }
-        .footer-links a:hover { color: var(--accent-start); }
+        .footer-links a:hover { color: var(--accent-light); }
 
         /* ─── Responsive ─── */
         @media (max-width: 640px) {
