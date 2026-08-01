@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autopilot Import GUI (Community) - Windows Autopilot v1 &amp; v2 Registration</title>
+    <meta name="description" content="A WPF front end for the Windows Autopilot Community import script. Supports Autopilot v1 hardware hash and v2 Device Preparation identifiers, with staged progress, a working network check and offline CSV export.">
+    <meta name="author" content="Mark Orr">
+
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Autopilot Import GUI (Community)">
+    <meta property="og:description" content="Register Windows devices with Autopilot from a real window, not a console. v1 hardware hash and v2 Device Preparation in one self-contained PowerShell script.">
+    <meta property="og:url" content="https://apig.orr365.tech/">
+    <meta property="og:image" content="https://apig.orr365.tech/assets/01-register-v1.png">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <link rel="canonical" href="https://apig.orr365.tech/">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-card: rgba(255, 255, 255, 0.05);
+            --bg-card-hover: rgba(255, 255, 255, 0.08);
+            --text-primary: #e6edf3;
+            --text-secondary: rgba(230, 237, 243, 0.7);
+            --text-muted: rgba(230, 237, 243, 0.4);
+            --accent-start: #667eea;
+            --accent-end: #764ba2;
+            --border: rgba(255, 255, 255, 0.08);
+            --code-bg: rgba(255, 255, 255, 0.06);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        a { color: var(--accent-start); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        code {
+            font-family: 'Cascadia Code', 'Fira Code', 'SF Mono', Consolas, monospace;
+            font-size: 0.88em;
+            background: var(--code-bg);
+            border-radius: 4px;
+            padding: 0.1em 0.4em;
+        }
+
+        /* ─── Hero ─── */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at 50% 0%, rgba(102, 126, 234, 0.15) 0%, transparent 60%),
+                        radial-gradient(ellipse at 80% 50%, rgba(118, 75, 162, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .hero-brand {
+            font-size: clamp(0.8rem, 1.75vw, 1.35rem);
+            letter-spacing: 4px;
+            font-weight: 300;
+            opacity: 0.9;
+            margin-bottom: 1rem;
+            max-width: 100%;
+            background: linear-gradient(135deg, var(--accent-start), var(--accent-end));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Each word is an unbreakable unit, so the brand wraps between words on a
+           narrow screen instead of forcing the whole page wider than the viewport. */
+        .hero-brand span { display: inline-block; white-space: nowrap; margin: 0 5px; }
+
+        .hero-tagline {
+            font-size: clamp(1rem, 2.5vw, 1.4rem);
+            color: var(--text-secondary);
+            max-width: 720px;
+            margin-bottom: 0.5rem;
+            font-weight: 300;
+        }
+
+        .hero-sub {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            margin-bottom: 2.5rem;
+            max-width: 620px;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 0.75rem 2rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .btn:hover { transform: translateY(-2px); text-decoration: none; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-start), var(--accent-end));
+            color: white;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+        }
+        .btn-primary:hover { box-shadow: 0 6px 30px rgba(102, 126, 234, 0.45); }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+        }
+        .btn-secondary:hover { background: var(--bg-card-hover); }
+
+        .version-badge {
+            display: inline-block;
+            margin-top: 1.5rem;
+            padding: 0.3rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+        }
+
+        /* ─── Sections ─── */
+        section { padding: 3.5rem 2rem; max-width: 1100px; margin: 0 auto; }
+
+        .section-title {
+            font-size: clamp(1.5rem, 3vw, 2rem);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+
+        .section-subtitle {
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 1.05rem;
+        }
+
+        /* ─── Features ─── */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.8rem;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .feature-card:hover {
+            background: var(--bg-card-hover);
+            border-color: rgba(102, 126, 234, 0.2);
+        }
+
+        .feature-icon { font-size: 1.6rem; margin-bottom: 0.8rem; }
+
+        .feature-card h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 0.92rem;
+            line-height: 1.5;
+        }
+
+        /* ─── Modes ─── */
+        .modes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .mode-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.8rem;
+        }
+
+        .mode-card h3 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .mode-card .mode-kicker {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--accent-start);
+            margin-bottom: 0.6rem;
+        }
+
+        .mode-card p {
+            color: var(--text-secondary);
+            font-size: 0.92rem;
+            margin-bottom: 0.9rem;
+        }
+
+        .mode-card ul { list-style: none; padding: 0; }
+
+        .mode-card li {
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            padding: 0.25rem 0;
+        }
+
+        .mode-card li::before {
+            content: '\2022';
+            color: var(--accent-start);
+            margin-right: 0.6rem;
+        }
+
+        .note {
+            max-width: 800px;
+            margin: 1.5rem auto 0;
+            padding: 1rem 1.25rem;
+            border-left: 3px solid var(--accent-start);
+            background: var(--bg-card);
+            border-radius: 0 8px 8px 0;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* ─── Demo ─── */
+        .demo-section { background: var(--bg-secondary); border-radius: 16px; padding: 3rem 2rem; }
+
+        .demo-wrapper {
+            max-width: 860px;
+            margin: 0 auto;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .demo-wrapper:hover { border-color: rgba(102, 126, 234, 0.3); }
+
+        .demo-wrapper img {
+            width: 100%;
+            display: block;
+        }
+
+        /* ─── Screenshots ─── */
+        .screenshots-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+        .screenshot-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: border-color 0.2s, transform 0.2s;
+            cursor: pointer;
+        }
+
+        .screenshot-card.wide { grid-column: 1 / -1; }
+
+        .screenshot-card:hover {
+            border-color: rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .screenshot-card img {
+            width: 100%;
+            display: block;
+        }
+
+        .screenshot-label {
+            padding: 0.8rem 1rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-align: center;
+            border-top: 1px solid var(--border);
+        }
+
+        /* ─── Lightbox ─── */
+        .lightbox {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            cursor: pointer;
+        }
+
+        .lightbox.active { display: flex; }
+
+        .lightbox img {
+            max-width: 90vw;
+            max-height: 90vh;
+            border-radius: 8px;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: 1.5rem;
+            right: 2rem;
+            font-size: 2rem;
+            color: white;
+            opacity: 0.7;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-family: inherit;
+        }
+        .lightbox-close:hover { opacity: 1; }
+
+        /* ─── Quick Start ─── */
+        .quickstart-section { background: var(--bg-secondary); border-radius: 16px; padding: 3rem 2rem; scroll-margin-top: 1rem; }
+
+        .code-block {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.2rem 1.5rem;
+            font-family: 'Cascadia Code', 'Fira Code', 'SF Mono', Consolas, monospace;
+            font-size: 0.9rem;
+            line-height: 1.7;
+            overflow-x: auto;
+            position: relative;
+            margin-bottom: 1rem;
+            white-space: pre;
+        }
+
+        .code-block .comment { color: #6a9955; }
+        .code-block .command { color: #dcdcaa; }
+        .code-block .string { color: #ce9178; }
+        .code-block .param { color: #9cdcfe; }
+
+        .code-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .code-steps {
+            max-width: 840px;
+            margin: 0 auto;
+        }
+
+        .code-step { margin-bottom: 1.5rem; }
+
+        .code-note {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin: -0.5rem 0 0.5rem;
+        }
+
+        /* ─── Parameters ─── */
+        .params-table {
+            width: 100%;
+            max-width: 720px;
+            margin: 0 auto;
+            border-collapse: collapse;
+        }
+
+        .params-table th {
+            text-align: left;
+            padding: 0.8rem 1rem;
+            border-bottom: 2px solid var(--border);
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .params-table td {
+            padding: 0.7rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            vertical-align: top;
+        }
+
+        .params-table tr:last-child td { border-bottom: none; }
+
+        .key {
+            display: inline-block;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 0.15rem 0.5rem;
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 0.8rem;
+            color: var(--text-primary);
+            white-space: nowrap;
+        }
+
+        /* ─── Permissions ─── */
+        .permissions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2rem;
+            max-width: 860px;
+            margin: 0 auto;
+        }
+
+        .permission-group h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.8rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .permission-group ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .permission-group li {
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            padding: 0.35rem 0;
+            overflow-wrap: anywhere;
+        }
+
+        .permission-group li::before {
+            content: '>';
+            color: var(--accent-start);
+            margin-right: 0.5rem;
+        }
+
+        .permission-group .perm-note {
+            font-family: inherit;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.8rem;
+        }
+        .permission-group .perm-note::before { content: none; }
+
+        /* ─── Requirements ─── */
+        .req-list {
+            max-width: 720px;
+            margin: 0 auto;
+            list-style: none;
+            padding: 0;
+        }
+
+        .req-list li {
+            padding: 0.6rem 0;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+        .req-list li:last-child { border-bottom: none; }
+
+        .req-list strong { color: var(--text-primary); font-weight: 600; }
+
+        /* ─── Credits ─── */
+        .credits {
+            max-width: 760px;
+            margin: 0 auto;
+            color: var(--text-secondary);
+            font-size: 0.92rem;
+        }
+        .credits p { margin-bottom: 0.8rem; }
+
+        /* ─── Footer ─── */
+        footer {
+            text-align: center;
+            padding: 3rem 2rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a { color: var(--text-secondary); }
+        .footer-links a:hover { color: var(--accent-start); }
+
+        /* ─── Responsive ─── */
+        @media (max-width: 640px) {
+            section { padding: 3rem 1.2rem; }
+            .features-grid { grid-template-columns: 1fr; }
+            .modes-grid { grid-template-columns: 1fr; }
+            .screenshots-grid { grid-template-columns: 1fr; }
+            .screenshot-card.wide { grid-column: auto; }
+            .hero { min-height: 80vh; }
+            .hero-buttons { flex-direction: column; align-items: center; }
+            .btn { width: 100%; max-width: 280px; justify-content: center; }
+            .permissions-grid { grid-template-columns: 1fr; }
+            .code-block { font-size: 0.78rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Hero -->
+    <div class="hero">
+        <div class="hero-brand"><span>[&nbsp;A U T O P I L O T</span> <span>I M P O R T</span> <span>G U I</span> <span>C O M M U N I T Y&nbsp;]</span></div>
+        <p class="hero-tagline">
+            Register Windows devices with Autopilot from a window, not a console.
+        </p>
+        <p class="hero-sub">
+            Autopilot v1 hardware hash and v2 Device Preparation identifiers &mdash; one self-contained PowerShell script that runs in OOBE.
+        </p>
+        <div class="hero-buttons">
+            <a href="#quickstart" class="btn btn-primary">Install Now</a>
+            <a href="https://github.com/markorr321/Get-WindowsAutopilotImportCommunity" class="btn btn-secondary">
+                <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                GitHub
+            </a>
+        </div>
+        <span class="version-badge">v1.3.0 &middot; Windows PowerShell 5.1</span>
+    </div>
+
+    <!-- Features -->
+    <section>
+        <h2 class="section-title">Features</h2>
+        <p class="section-subtitle">A ground-up rewrite, built around what actually goes wrong at the OOBE screen.</p>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F5A5;&#xFE0F;</div>
+                <h3>v1 and v2 in One Window</h3>
+                <p>A mode toggle that is not cosmetic &mdash; the hardware hash and Device Preparation paths are mutually exclusive in the engine, and the window reshapes itself for each.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F4BB;</div>
+                <h3>Device Preparation Ready</h3>
+                <p>Imports a Manufacturer,Model,Serial identifier &mdash; no hardware hash, so it works on virtual machines. Ships its own restart controls, because the engine cannot provide them on this path.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F4E1;</div>
+                <h3>A Network Check That Works</h3>
+                <p>26 documented Autopilot, Intune, Entra, TPM attestation, activation and update endpoints probed concurrently in about 0.4 s. Failures sort to the top; required in red, optional in amber.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#x23F3;</div>
+                <h3>Staged Progress, Real Cancel</h3>
+                <p>Engine output is streamed into the window with staged progress and a working cancel button, instead of being thrown at a separate console window you cannot see.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#x267B;&#xFE0F;</div>
+                <h3>Already-Registered, Handled</h3>
+                <p>Update the group tag, delete and re-add, or assume new &mdash; chosen explicitly up front, so the engine never stalls on a hidden Read-Host prompt.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F4BE;</div>
+                <h3>Offline Export</h3>
+                <p>Hardware hash CSV, device identifier CSV, partner CSV format and clipboard copies &mdash; captured on the device without ever touching your tenant.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#x1FA7A;</div>
+                <h3>Autopilot Diagnostics</h3>
+                <p>Reads this machine's ESP and enrolment state from local event logs and the registry. Optionally sign in read-only to resolve app, policy and script GUIDs into display names.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F441;&#xFE0F;</div>
+                <h3>Preview Command</h3>
+                <p>Renders the exact engine invocation without running anything &mdash; useful for verifying behaviour, and for lifting straight into your own automation.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F512;</div>
+                <h3>Signed Engine, Byte-Exact</h3>
+                <p>Andrew Taylor's community script is vendored unmodified and embedded as base64 of its exact bytes, so its Authenticode signature survives. Verified at build time and again at runtime.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Modes -->
+    <section>
+        <h2 class="section-title">Which Mode?</h2>
+        <p class="section-subtitle">The two registration paths take different inputs and target devices differently.</p>
+
+        <div class="modes-grid">
+            <div class="mode-card">
+                <div class="mode-kicker">Autopilot v1</div>
+                <h3>Hardware Hash</h3>
+                <p>Uploads the 4K hardware hash to <code>windowsAutopilotDeviceIdentities</code>.</p>
+                <ul>
+                    <li>Group tag, assigned user and computer name all apply</li>
+                    <li>Entra group membership and profile-assignment waiting apply</li>
+                    <li>Requires administrator rights</li>
+                    <li>Many virtual machines cannot produce a hash at all</li>
+                </ul>
+            </div>
+            <div class="mode-card">
+                <div class="mode-kicker">Autopilot v2</div>
+                <h3>Device Preparation</h3>
+                <p>Imports a <code>Manufacturer,Model,Serial</code> identifier to <code>importedDeviceIdentities</code>.</p>
+                <ul>
+                    <li>No hardware hash needed, so it works on VMs</li>
+                    <li>Devices are targeted by the Entra group on your Device Preparation policy</li>
+                    <li>Group tag, assigned user, computer name and assignment waiting do not apply</li>
+                    <li>Restart now button, or restart automatically after a clean import</li>
+                </ul>
+            </div>
+        </div>
+
+        <p class="note">
+            Restart only once the device is a member of the Entra group targeted by your Device Preparation policy &mdash; otherwise it returns to OOBE before the policy can apply. If the machine cannot produce a hardware hash, the tool defaults to v2 and says why.
+        </p>
+    </section>
+
+    <!-- Featured screenshot -->
+    <section>
+        <div class="demo-section">
+            <h2 class="section-title">See It in Action</h2>
+            <p class="section-subtitle">The Register page &mdash; mode toggle, registration details, and live engine output.</p>
+            <div class="demo-wrapper" onclick="openLightbox(this.querySelector('img'))">
+                <img src="assets/01-register-v1.png" alt="Register page in Autopilot v1 mode, showing the mode toggle, group tag, registration details and streamed engine output">
+            </div>
+        </div>
+    </section>
+
+    <!-- Screenshots -->
+    <section>
+        <h2 class="section-title">Screenshots</h2>
+        <p class="section-subtitle">Five pages, one window. Click any shot to enlarge.</p>
+        <div class="screenshots-grid">
+            <div class="screenshot-card" onclick="openLightbox(this.querySelector('img'))">
+                <img src="assets/02-register-v2.png" alt="Register page in Device Preparation mode, with the registration details card hidden and restart controls shown" loading="lazy">
+                <div class="screenshot-label">Device Preparation Mode</div>
+            </div>
+            <div class="screenshot-card" onclick="openLightbox(this.querySelector('img'))">
+                <img src="assets/03-device.png" alt="Device page showing full hardware inventory and offline CSV export options" loading="lazy">
+                <div class="screenshot-label">Device &amp; Offline Export</div>
+            </div>
+            <div class="screenshot-card" onclick="openLightbox(this.querySelector('img'))">
+                <img src="assets/04-network.png" alt="Network check page showing a colour-coded grid of endpoint probe results with latency" loading="lazy">
+                <div class="screenshot-label">Network Check</div>
+            </div>
+            <div class="screenshot-card" onclick="openLightbox(this.querySelector('img'))">
+                <img src="assets/05-advanced.png" alt="Advanced page with post-assignment actions, diagnostics, Windows Update and engine integrity verification" loading="lazy">
+                <div class="screenshot-label">Advanced</div>
+            </div>
+            <div class="screenshot-card wide" onclick="openLightbox(this.querySelector('img'))">
+                <img src="assets/06-logs.png" alt="Logs page showing the full session output including a formatted diagnostics timeline table" loading="lazy">
+                <div class="screenshot-label">Logs &mdash; full session output, formatted</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Start -->
+    <section>
+        <div id="quickstart" class="quickstart-section">
+            <h2 class="section-title">Quick Start</h2>
+            <p class="section-subtitle">Two commands from the PowerShell Gallery.</p>
+
+            <div class="code-steps">
+                <div class="code-step">
+                    <div class="code-label">Install</div>
+<div class="code-block"><span class="command">Install-Script</span> <span class="param">-Name</span> <span class="string">Get-WindowsAutopilotImportGUICommunity</span> <span class="param">-Scope</span> AllUsers <span class="param">-Force</span></div>
+                    <p class="code-note">Installs to <code>C:\Program Files\WindowsPowerShell\Scripts</code>, which is already on PATH.</p>
+                </div>
+
+                <div class="code-step">
+                    <div class="code-label">Run</div>
+<div class="code-block"><span class="command">Get-WindowsAutopilotImportGUICommunity.ps1</span></div>
+                </div>
+
+                <div class="code-step">
+                    <div class="code-label">On a clean image, bootstrap the Gallery first</div>
+<div class="code-block"><span class="comment"># A fresh Windows image has no NuGet provider and treats PSGallery as untrusted.</span>
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+<span class="command">Install-PackageProvider</span> <span class="param">-Name</span> NuGet <span class="param">-MinimumVersion</span> 2.8.5.201 <span class="param">-Force</span>
+<span class="command">Set-PSRepository</span> <span class="param">-Name</span> PSGallery <span class="param">-InstallationPolicy</span> Trusted</div>
+                </div>
+
+                <div class="code-step">
+                    <div class="code-label">Or run it straight from a USB stick, including in OOBE</div>
+<div class="code-block"><span class="comment"># In OOBE, press Shift+F10 first.</span>
+powershell.exe <span class="param">-ExecutionPolicy</span> Bypass <span class="param">-File</span> D:\Get-WindowsAutopilotImportGUICommunity.ps1</div>
+                    <p class="code-note">Everything is embedded in that one file &mdash; the window, the theme and the engine itself.</p>
+                </div>
+            </div>
+
+            <p class="note">
+                Run all of this in <strong>Windows PowerShell 5.1</strong> (<code>powershell.exe</code>), not PowerShell 7 &mdash; the engine pins <code>Microsoft.Graph.Authentication</code> to 2.9.1 or lower. Launching from a PS7 terminal leaks its module path into child processes; the tool corrects for that, but 5.1 avoids the problem entirely.
+            </p>
+        </div>
+    </section>
+
+    <!-- Parameters -->
+    <section>
+        <h2 class="section-title">Parameters</h2>
+        <p class="section-subtitle">All optional &mdash; they pre-fill the window, they do not bypass it.</p>
+
+        <table class="params-table">
+            <thead>
+                <tr><th>Parameter</th><th>Effect</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><span class="key">-Mode v1|v2</span></td><td>Pre-selects the registration mode: hardware hash, or Device Preparation identifier.</td></tr>
+                <tr><td><span class="key">-GroupTag</span></td><td>Pre-fills the group tag field. Applies to v1 only.</td></tr>
+                <tr><td><span class="key">-AssignedUser</span></td><td>Pre-fills the assigned user UPN. Applies to v1 only.</td></tr>
+                <tr><td><span class="key">-NoElevate</span></td><td>Skips the automatic elevation prompt. The hardware hash cannot be read without administrator rights, so v1 will not work in this state.</td></tr>
+            </tbody>
+        </table>
+
+        <div class="code-steps" style="margin-top:2rem">
+<div class="code-block"><span class="comment"># Pre-fill the group tag and start in v1 mode</span>
+.\Get-WindowsAutopilotImportGUICommunity.ps1 <span class="param">-GroupTag</span> FINANCE <span class="param">-Mode</span> v1
+
+<span class="comment"># Device Preparation, pre-filled assigned user</span>
+.\Get-WindowsAutopilotImportGUICommunity.ps1 <span class="param">-Mode</span> v2 <span class="param">-AssignedUser</span> <span class="string">user@contoso.com</span></div>
+        </div>
+    </section>
+
+    <!-- Requirements -->
+    <section>
+        <h2 class="section-title">Requirements</h2>
+        <p class="section-subtitle">Short list, but each item is load-bearing.</p>
+
+        <ul class="req-list">
+            <li><strong>Windows 10 or 11</strong> with <strong>Windows PowerShell 5.1</strong> &mdash; not PowerShell 7.</li>
+            <li><strong>Administrator rights.</strong> The hardware hash lives in a CIM class standard users cannot read.</li>
+            <li><strong>An account that can register Autopilot devices</strong> in your tenant.</li>
+            <li><strong>Works in OOBE</strong> via <span class="key">Shift</span> + <span class="key">F10</span>. Does <em>not</em> work in WinPE &mdash; there is no WPF there.</li>
+        </ul>
+    </section>
+
+    <!-- Permissions -->
+    <section>
+        <h2 class="section-title">Graph Permissions</h2>
+        <p class="section-subtitle">Delegated scopes requested on first sign-in.</p>
+
+        <div class="permissions-grid">
+            <div class="permission-group">
+                <h3>Registration</h3>
+                <ul>
+                    <li>Device.ReadWrite.All</li>
+                    <li>DeviceManagementManagedDevices.ReadWrite.All</li>
+                    <li>DeviceManagementServiceConfig.ReadWrite.All</li>
+                    <li>DeviceManagementScripts.ReadWrite.All</li>
+                    <li>Group.ReadWrite.All</li>
+                    <li>GroupMember.ReadWrite.All</li>
+                    <li class="perm-note">The last two are requested only when adding the device to an Entra group.</li>
+                </ul>
+            </div>
+            <div class="permission-group">
+                <h3>Diagnostics (Optional)</h3>
+                <ul>
+                    <li>DeviceManagementApps.Read.All</li>
+                    <li>DeviceManagementConfiguration.Read.All</li>
+                    <li class="perm-note">Diagnostics run entirely locally by default. These read-only scopes are requested only if you tick <strong>Resolve app and policy names from Intune</strong>, so the local read stays usable in OOBE with no sign-in and no browser prompt.</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Credits -->
+    <section>
+        <h2 class="section-title">Credits</h2>
+        <p class="section-subtitle">Standing on other people's work, and saying so.</p>
+
+        <div class="credits">
+            <p><strong>Engine:</strong> <a href="https://github.com/andrew-s-taylor/WindowsAutopilotInfo"><code>get-windowsautopilotinfocommunity.ps1</code></a> and <code>Get-AutopilotDiagnosticsCommunity.ps1</code> &copy; Andrew S Taylor, MIT. Vendored unmodified &mdash; see <code>vendor\VERSION.json</code> for the pinned commit and checksums.</p>
+            <p><strong>Original concept:</strong> <a href="https://github.com/ugurkocde/AutoPilot_Import_GUI">AutoPilot_Import_GUI</a> &copy; 2023 Ugur Koc, MIT. This is a ground-up rewrite; no code from it is redistributed here.</p>
+            <p>The community script itself derives from Microsoft's <code>Get-WindowsAutoPilotInfo</code> by Michael Niehaus.</p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-links">
+            <a href="https://github.com/markorr321/Get-WindowsAutopilotImportCommunity">GitHub</a>
+            <a href="https://www.powershellgallery.com/packages/Get-WindowsAutopilotImportGUICommunity">PowerShell Gallery</a>
+            <a href="https://github.com/markorr321/Get-WindowsAutopilotImportCommunity/blob/main/LICENSE">License</a>
+            <a href="https://orr365.tools">orr365.tools</a>
+        </div>
+        <p>by Mark Orr</p>
+    </footer>
+
+    <!-- Lightbox -->
+    <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+        <button class="lightbox-close" onclick="closeLightbox()" aria-label="Close">&times;</button>
+        <img id="lightbox-img" src="" alt="">
+    </div>
+
+    <script>
+        function openLightbox(img) {
+            var lb = document.getElementById('lightbox');
+            document.getElementById('lightbox-img').src = img.src;
+            document.getElementById('lightbox-img').alt = img.alt;
+            lb.classList.add('active');
+        }
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.remove('active');
+        }
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeLightbox();
+        });
+    </script>
+
+</body>
+</html>
