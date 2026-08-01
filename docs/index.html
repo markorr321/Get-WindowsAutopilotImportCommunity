@@ -717,14 +717,6 @@
                 </div>
 
                 <div class="code-step">
-                    <div class="code-label">On a clean image, bootstrap the Gallery first</div>
-<div class="code-block"><span class="comment"># A fresh Windows image has no NuGet provider and treats PSGallery as untrusted.</span>
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-<span class="command">Install-PackageProvider</span> <span class="param">-Name</span> NuGet <span class="param">-MinimumVersion</span> 2.8.5.201 <span class="param">-Force</span>
-<span class="command">Set-PSRepository</span> <span class="param">-Name</span> PSGallery <span class="param">-InstallationPolicy</span> Trusted</div>
-                </div>
-
-                <div class="code-step">
                     <div class="code-label">Or run it straight from a USB stick, including in OOBE</div>
 <div class="code-block"><span class="comment"># In OOBE, press Shift+F10 first.</span>
 powershell.exe <span class="param">-ExecutionPolicy</span> Bypass <span class="param">-File</span> D:\Get-WindowsAutopilotImportGUICommunity.ps1</div>
