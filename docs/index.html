@@ -36,14 +36,15 @@
             --code-bg: rgba(255, 255, 255, 0.06);
         }
 
-        html { scroll-behavior: smooth; }
+        /* overflow-x sits on html rather than body: on body it forces the computed
+           overflow-y to auto, making body a scroll container the document never scrolls. */
+        html { scroll-behavior: smooth; overflow-x: hidden; }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
             line-height: 1.6;
-            overflow-x: hidden;
         }
 
         a { color: var(--accent-light); text-decoration: none; }
@@ -281,8 +282,12 @@
         }
         .demo-wrapper:hover { border-color: rgba(var(--accent-rgb), 0.3); }
 
+        /* height:auto lets the width/height attributes on the img act purely as an
+           aspect ratio, so the browser reserves the right space before the file loads
+           and the anchor targets below stop drifting. */
         .demo-wrapper img {
             width: 100%;
+            height: auto;
             display: block;
         }
 
@@ -311,6 +316,7 @@
 
         .screenshot-card img {
             width: 100%;
+            height: auto;
             display: block;
         }
 
@@ -665,7 +671,7 @@
             <h2 class="section-title">See It in Action</h2>
             <p class="section-subtitle">The Register page &mdash; mode toggle, registration details, and live engine output.</p>
             <div class="demo-wrapper" onclick="openLightbox(this.querySelector('img'))">
-                <img src="assets/01-register-v1.png" alt="Register page in Autopilot v1 mode, showing the mode toggle, group tag, registration details and streamed engine output">
+                <img src="assets/01-register-v1.png" width="1264" height="1001" alt="Register page in Autopilot v1 mode, showing the mode toggle, group tag, registration details and streamed engine output">
             </div>
         </div>
     </section>
@@ -676,23 +682,23 @@
         <p class="section-subtitle">Five pages, one window. Click any shot to enlarge.</p>
         <div class="screenshots-grid">
             <div class="screenshot-card" onclick="openLightbox(this.querySelector('img'))">
-                <img src="assets/02-register-v2.png" alt="Register page in Device Preparation mode, with the registration details card hidden and restart controls shown" loading="lazy">
+                <img src="assets/02-register-v2.png" width="1264" height="1001" alt="Register page in Device Preparation mode, with the registration details card hidden and restart controls shown" loading="lazy">
                 <div class="screenshot-label">Device Preparation Mode</div>
             </div>
             <div class="screenshot-card" onclick="openLightbox(this.querySelector('img'))">
-                <img src="assets/03-device.png" alt="Device page showing full hardware inventory and offline CSV export options" loading="lazy">
+                <img src="assets/03-device.png" width="1264" height="1001" alt="Device page showing full hardware inventory and offline CSV export options" loading="lazy">
                 <div class="screenshot-label">Device &amp; Offline Export</div>
             </div>
             <div class="screenshot-card" onclick="openLightbox(this.querySelector('img'))">
-                <img src="assets/04-network.png" alt="Network check page showing a colour-coded grid of endpoint probe results with latency" loading="lazy">
+                <img src="assets/04-network.png" width="1264" height="1001" alt="Network check page showing a colour-coded grid of endpoint probe results with latency" loading="lazy">
                 <div class="screenshot-label">Network Check</div>
             </div>
             <div class="screenshot-card" onclick="openLightbox(this.querySelector('img'))">
-                <img src="assets/05-advanced.png" alt="Advanced page with post-assignment actions, diagnostics, Windows Update and engine integrity verification" loading="lazy">
+                <img src="assets/05-advanced.png" width="1264" height="1001" alt="Advanced page with post-assignment actions, diagnostics, Windows Update and engine integrity verification" loading="lazy">
                 <div class="screenshot-label">Advanced</div>
             </div>
             <div class="screenshot-card wide" onclick="openLightbox(this.querySelector('img'))">
-                <img src="assets/06-logs.png" alt="Logs page showing the full session output including a formatted diagnostics timeline table" loading="lazy">
+                <img src="assets/06-logs.png" width="1264" height="1001" alt="Logs page showing the full session output including a formatted diagnostics timeline table" loading="lazy">
                 <div class="screenshot-label">Logs &mdash; full session output, formatted</div>
             </div>
         </div>
