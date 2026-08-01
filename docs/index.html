@@ -376,11 +376,13 @@
             font-family: 'Cascadia Code', 'Fira Code', 'SF Mono', Consolas, monospace;
             font-size: 0.9rem;
             line-height: 1.7;
-            overflow-x: auto;
             position: relative;
             margin-bottom: 1rem;
-            white-space: pre;
-            padding-right: 5rem;
+            padding-right: 3rem;
+            /* pre-wrap rather than pre + overflow-x:auto — a long command wraps instead of
+               growing a horizontal scrollbar, which no viewport is narrow enough to avoid. */
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
         }
 
         /* The button lives on this wrapper, not inside .code-block, so it stays pinned
@@ -389,21 +391,21 @@
 
         .copy-btn {
             position: absolute;
-            top: 0.5rem;
-            right: 0.5rem;
-            padding: 0.3rem 0.6rem;
-            font-family: inherit;
-            font-size: 0.7rem;
-            font-weight: 500;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
+            top: 0.4rem;
+            right: 0.4rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            padding: 0;
             color: var(--text-muted);
-            background: var(--bg-card-hover);
-            border: 1px solid var(--border);
+            background: none;
+            border: none;
             border-radius: 6px;
             cursor: pointer;
-            opacity: 0.55;
-            transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+            opacity: 0;
+            transition: opacity 0.15s, color 0.15s, background 0.15s;
         }
 
         .code-wrap:hover .copy-btn,
@@ -411,13 +413,18 @@
 
         .copy-btn:hover {
             color: var(--text-primary);
-            border-color: rgba(var(--accent-rgb), 0.5);
+            background: var(--bg-card-hover);
         }
 
         .copy-btn.copied {
             opacity: 1;
             color: var(--accent-light);
-            border-color: rgba(var(--accent-rgb), 0.6);
+            background: none;
+        }
+
+        /* Touch devices never fire hover, so the icon would be unreachable there. */
+        @media (hover: none) {
+            .copy-btn { opacity: 0.5; }
         }
 
         .code-block .comment { color: #6a9955; }
@@ -433,8 +440,10 @@
             letter-spacing: 1px;
         }
 
+        /* Wide enough that the longest command — the OOBE one-liner — still sits on a
+           single line on a desktop viewport once the copy button's gutter is deducted. */
         .code-steps {
-            max-width: 840px;
+            max-width: 900px;
             margin: 0 auto;
         }
 
@@ -867,6 +876,13 @@ powershell.exe <span class="param">-ExecutionPolicy</span> Bypass <span class="p
         // Copy buttons are built here rather than in the markup so the code blocks stay
         // readable, and so a reader with JS disabled just sees plain, selectable commands.
         (function () {
+            var ICON_COPY = '<svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor" aria-hidden="true">'
+                + '<path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>'
+                + '<path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/></svg>';
+
+            var ICON_DONE = '<svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor" aria-hidden="true">'
+                + '<path d="M13.485 1.929a.75.75 0 0 1 .086 1.057l-7 8.5a.75.75 0 0 1-1.114.05l-3.5-3.5a.75.75 0 1 1 1.06-1.06l2.92 2.92 6.49-7.88a.75.75 0 0 1 1.058-.087z"/></svg>';
+
             document.querySelectorAll('.code-block').forEach(function (block) {
                 var wrap = document.createElement('div');
                 wrap.className = 'code-wrap';
@@ -876,16 +892,21 @@ powershell.exe <span class="param">-ExecutionPolicy</span> Bypass <span class="p
                 var btn = document.createElement('button');
                 btn.type = 'button';
                 btn.className = 'copy-btn';
-                btn.textContent = 'Copy';
+                btn.innerHTML = ICON_COPY;
+                btn.title = 'Copy';
                 btn.setAttribute('aria-label', 'Copy command to clipboard');
                 wrap.appendChild(btn);
 
                 btn.addEventListener('click', function () {
                     copyText(block.textContent.trim(), function (ok) {
-                        btn.textContent = ok ? 'Copied' : 'Press Ctrl+C';
+                        btn.innerHTML = ok ? ICON_DONE : ICON_COPY;
+                        btn.title = ok ? 'Copied' : 'Copy failed — select and press Ctrl+C';
+                        btn.setAttribute('aria-label', btn.title);
                         btn.classList.toggle('copied', ok);
                         setTimeout(function () {
-                            btn.textContent = 'Copy';
+                            btn.innerHTML = ICON_COPY;
+                            btn.title = 'Copy';
+                            btn.setAttribute('aria-label', 'Copy command to clipboard');
                             btn.classList.remove('copied');
                         }, 2000);
                     });
